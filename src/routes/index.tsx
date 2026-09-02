@@ -65,13 +65,13 @@ function Index() {
           <a className="transition-colors hover:text-foreground" href="#dashboard">Pricing</a>
         </nav>
         <div className="flex items-center gap-3">
-          <a className="text-sm text-foreground/80" href="#dashboard">Sign in</a>
-          <a
+          <Link className="text-sm text-foreground/80" to="/dashboard">Sign in</Link>
+          <Link
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
-            href="#dashboard"
+            to="/dashboard"
           >
             Launch app
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -93,18 +93,18 @@ function Index() {
             teams who carry the revenue.
           </p>
           <div className="mt-8 flex items-center justify-center gap-4 rise-late">
-            <a
+            <Link
               className="rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-[0_0_28px_oklch(0.705_0.131_232/35%)] transition-transform hover:-translate-y-0.5"
-              href="#dashboard"
+              to="/dashboard"
             >
               Start free pilot
-            </a>
-            <a
+            </Link>
+            <Link
               className="glass rounded-full px-6 py-3 font-semibold text-foreground transition-transform hover:-translate-y-0.5"
-              href="#dashboard"
+              to="/dashboard"
             >
               See live demo
-            </a>
+            </Link>
           </div>
         </div>
       </section>
