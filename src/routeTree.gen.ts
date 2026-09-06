@@ -10,13 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
+import { Route as AuthenticatedStudioIndexRouteImport } from './routes/_authenticated/studio.index'
+import { Route as AuthenticatedStudioClientIdRouteImport } from './routes/_authenticated/studio.$clientId'
+import { Route as AuthenticatedStudioClientIdReviewReviewIdRouteImport } from './routes/_authenticated/studio.$clientId.review.$reviewId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -34,36 +42,88 @@ const SetPasswordRoute = SetPasswordRouteImport.update({
   path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedStudioIndexRoute =
+  AuthenticatedStudioIndexRouteImport.update({
+    id: '/studio/',
+    path: '/studio/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStudioClientIdRoute =
+  AuthenticatedStudioClientIdRouteImport.update({
+    id: '/studio/$clientId',
+    path: '/studio/$clientId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStudioClientIdReviewReviewIdRoute =
+  AuthenticatedStudioClientIdReviewReviewIdRouteImport.update({
+    id: '/review/$reviewId',
+    path: '/review/$reviewId',
+    getParentRoute: () => AuthenticatedStudioClientIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/set-password': typeof SetPasswordRoute
+  '/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
+  '/studio/': typeof AuthenticatedStudioIndexRoute
+  '/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/set-password': typeof SetPasswordRoute
+  '/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
+  '/studio': typeof AuthenticatedStudioIndexRoute
+  '/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/set-password': typeof SetPasswordRoute
+  '/_authenticated/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
+  '/_authenticated/studio/': typeof AuthenticatedStudioIndexRoute
+  '/_authenticated/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/set-password'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/set-password'
+    | '/studio/$clientId'
+    | '/studio/'
+    | '/studio/$clientId/review/$reviewId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/set-password'
-  id: '__root__' | '/' | '/auth' | '/dashboard' | '/set-password'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/set-password'
+    | '/studio/$clientId'
+    | '/studio'
+    | '/studio/$clientId/review/$reviewId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/dashboard'
+    | '/set-password'
+    | '/_authenticated/studio/$clientId'
+    | '/_authenticated/studio/'
+    | '/_authenticated/studio/$clientId/review/$reviewId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   SetPasswordRoute: typeof SetPasswordRoute
@@ -76,6 +136,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -99,11 +166,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/studio/': {
+      id: '/_authenticated/studio/'
+      path: '/studio'
+      fullPath: '/studio/'
+      preLoaderRoute: typeof AuthenticatedStudioIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/studio/$clientId': {
+      id: '/_authenticated/studio/$clientId'
+      path: '/studio/$clientId'
+      fullPath: '/studio/$clientId'
+      preLoaderRoute: typeof AuthenticatedStudioClientIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/studio/$clientId/review/$reviewId': {
+      id: '/_authenticated/studio/$clientId/review/$reviewId'
+      path: '/review/$reviewId'
+      fullPath: '/studio/$clientId/review/$reviewId'
+      preLoaderRoute: typeof AuthenticatedStudioClientIdReviewReviewIdRouteImport
+      parentRoute: typeof AuthenticatedStudioClientIdRoute
+    }
   }
 }
 
+interface AuthenticatedStudioClientIdRouteChildren {
+  AuthenticatedStudioClientIdReviewReviewIdRoute: typeof AuthenticatedStudioClientIdReviewReviewIdRoute
+}
+
+const AuthenticatedStudioClientIdRouteChildren: AuthenticatedStudioClientIdRouteChildren =
+  {
+    AuthenticatedStudioClientIdReviewReviewIdRoute:
+      AuthenticatedStudioClientIdReviewReviewIdRoute,
+  }
+
+const AuthenticatedStudioClientIdRouteWithChildren =
+  AuthenticatedStudioClientIdRoute._addFileChildren(
+    AuthenticatedStudioClientIdRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedStudioClientIdRoute: typeof AuthenticatedStudioClientIdRouteWithChildren
+  AuthenticatedStudioIndexRoute: typeof AuthenticatedStudioIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedStudioClientIdRoute:
+    AuthenticatedStudioClientIdRouteWithChildren,
+  AuthenticatedStudioIndexRoute: AuthenticatedStudioIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   SetPasswordRoute: SetPasswordRoute,
