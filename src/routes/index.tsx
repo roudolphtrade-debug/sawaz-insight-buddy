@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import logoAsset from "@/assets/logo-sawaz.png.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -48,6 +49,12 @@ const toneText: Record<string, string> = {
 };
 
 function Index() {
+  useEffect(() => {
+    if (window.location.hash.includes("type=recovery")) {
+      window.location.replace("/set-password" + window.location.hash);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background font-sans text-foreground antialiased">
       {/* NAV */}
