@@ -12,8 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CollecteRouteImport } from './routes/collecte'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
+import { Route as CollecteIndexRouteImport } from './routes/collecte.index'
+import { Route as CollecteContenusRouteImport } from './routes/collecte.contenus'
+import { Route as CollecteMetaRouteImport } from './routes/collecte.meta'
+import { Route as CollecteValidationRouteImport } from './routes/collecte.validation'
+import { Route as CollecteYoutubeRouteImport } from './routes/collecte.youtube'
 import { Route as AuthenticatedStudioIndexRouteImport } from './routes/_authenticated/studio.index'
 import { Route as AuthenticatedStudioClientIdRouteImport } from './routes/_authenticated/studio.$clientId'
 import { Route as AuthenticatedStudioClientIdReviewReviewIdRouteImport } from './routes/_authenticated/studio.$clientId.review.$reviewId'
@@ -32,6 +38,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CollecteRoute = CollecteRouteImport.update({
+  id: '/collecte',
+  path: '/collecte',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -41,6 +52,31 @@ const SetPasswordRoute = SetPasswordRouteImport.update({
   id: '/set-password',
   path: '/set-password',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CollecteIndexRoute = CollecteIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CollecteRoute,
+} as any)
+const CollecteContenusRoute = CollecteContenusRouteImport.update({
+  id: '/contenus',
+  path: '/contenus',
+  getParentRoute: () => CollecteRoute,
+} as any)
+const CollecteMetaRoute = CollecteMetaRouteImport.update({
+  id: '/meta',
+  path: '/meta',
+  getParentRoute: () => CollecteRoute,
+} as any)
+const CollecteValidationRoute = CollecteValidationRouteImport.update({
+  id: '/validation',
+  path: '/validation',
+  getParentRoute: () => CollecteRoute,
+} as any)
+const CollecteYoutubeRoute = CollecteYoutubeRouteImport.update({
+  id: '/youtube',
+  path: '/youtube',
+  getParentRoute: () => CollecteRoute,
 } as any)
 const AuthenticatedStudioIndexRoute =
   AuthenticatedStudioIndexRouteImport.update({
@@ -64,8 +100,14 @@ const AuthenticatedStudioClientIdReviewReviewIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/collecte': typeof CollecteRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/set-password': typeof SetPasswordRoute
+  '/collecte/contenus': typeof CollecteContenusRoute
+  '/collecte/meta': typeof CollecteMetaRoute
+  '/collecte/validation': typeof CollecteValidationRoute
+  '/collecte/youtube': typeof CollecteYoutubeRoute
+  '/collecte/': typeof CollecteIndexRoute
   '/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
   '/studio/': typeof AuthenticatedStudioIndexRoute
   '/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
@@ -75,6 +117,11 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/set-password': typeof SetPasswordRoute
+  '/collecte/contenus': typeof CollecteContenusRoute
+  '/collecte/meta': typeof CollecteMetaRoute
+  '/collecte/validation': typeof CollecteValidationRoute
+  '/collecte/youtube': typeof CollecteYoutubeRoute
+  '/collecte': typeof CollecteIndexRoute
   '/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
   '/studio': typeof AuthenticatedStudioIndexRoute
   '/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
@@ -84,8 +131,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/collecte': typeof CollecteRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/set-password': typeof SetPasswordRoute
+  '/collecte/contenus': typeof CollecteContenusRoute
+  '/collecte/meta': typeof CollecteMetaRoute
+  '/collecte/validation': typeof CollecteValidationRoute
+  '/collecte/youtube': typeof CollecteYoutubeRoute
+  '/collecte/': typeof CollecteIndexRoute
   '/_authenticated/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
   '/_authenticated/studio/': typeof AuthenticatedStudioIndexRoute
   '/_authenticated/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
@@ -95,8 +148,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/collecte'
     | '/dashboard'
     | '/set-password'
+    | '/collecte/contenus'
+    | '/collecte/meta'
+    | '/collecte/validation'
+    | '/collecte/youtube'
+    | '/collecte/'
     | '/studio/$clientId'
     | '/studio/'
     | '/studio/$clientId/review/$reviewId'
@@ -106,6 +165,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/set-password'
+    | '/collecte/contenus'
+    | '/collecte/meta'
+    | '/collecte/validation'
+    | '/collecte/youtube'
+    | '/collecte'
     | '/studio/$clientId'
     | '/studio'
     | '/studio/$clientId/review/$reviewId'
@@ -114,8 +178,14 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/collecte'
     | '/dashboard'
     | '/set-password'
+    | '/collecte/contenus'
+    | '/collecte/meta'
+    | '/collecte/validation'
+    | '/collecte/youtube'
+    | '/collecte/'
     | '/_authenticated/studio/$clientId'
     | '/_authenticated/studio/'
     | '/_authenticated/studio/$clientId/review/$reviewId'
@@ -125,6 +195,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CollecteRoute: typeof CollecteRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   SetPasswordRoute: typeof SetPasswordRoute
 }
@@ -152,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/collecte': {
+      id: '/collecte'
+      path: '/collecte'
+      fullPath: '/collecte'
+      preLoaderRoute: typeof CollecteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -165,6 +243,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/set-password'
       preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/collecte/': {
+      id: '/collecte/'
+      path: '/'
+      fullPath: '/collecte/'
+      preLoaderRoute: typeof CollecteIndexRouteImport
+      parentRoute: typeof CollecteRoute
+    }
+    '/collecte/contenus': {
+      id: '/collecte/contenus'
+      path: '/contenus'
+      fullPath: '/collecte/contenus'
+      preLoaderRoute: typeof CollecteContenusRouteImport
+      parentRoute: typeof CollecteRoute
+    }
+    '/collecte/meta': {
+      id: '/collecte/meta'
+      path: '/meta'
+      fullPath: '/collecte/meta'
+      preLoaderRoute: typeof CollecteMetaRouteImport
+      parentRoute: typeof CollecteRoute
+    }
+    '/collecte/validation': {
+      id: '/collecte/validation'
+      path: '/validation'
+      fullPath: '/collecte/validation'
+      preLoaderRoute: typeof CollecteValidationRouteImport
+      parentRoute: typeof CollecteRoute
+    }
+    '/collecte/youtube': {
+      id: '/collecte/youtube'
+      path: '/youtube'
+      fullPath: '/collecte/youtube'
+      preLoaderRoute: typeof CollecteYoutubeRouteImport
+      parentRoute: typeof CollecteRoute
     }
     '/_authenticated/studio/': {
       id: '/_authenticated/studio/'
@@ -219,10 +332,31 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface CollecteRouteChildren {
+  CollecteContenusRoute: typeof CollecteContenusRoute
+  CollecteMetaRoute: typeof CollecteMetaRoute
+  CollecteValidationRoute: typeof CollecteValidationRoute
+  CollecteYoutubeRoute: typeof CollecteYoutubeRoute
+  CollecteIndexRoute: typeof CollecteIndexRoute
+}
+
+const CollecteRouteChildren: CollecteRouteChildren = {
+  CollecteContenusRoute: CollecteContenusRoute,
+  CollecteMetaRoute: CollecteMetaRoute,
+  CollecteValidationRoute: CollecteValidationRoute,
+  CollecteYoutubeRoute: CollecteYoutubeRoute,
+  CollecteIndexRoute: CollecteIndexRoute,
+}
+
+const CollecteRouteWithChildren = CollecteRoute._addFileChildren(
+  CollecteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  CollecteRoute: CollecteRouteWithChildren,
   DashboardRoute: DashboardRoute,
   SetPasswordRoute: SetPasswordRoute,
 }
