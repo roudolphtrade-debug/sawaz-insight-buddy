@@ -11,16 +11,16 @@ import {
   YAxis,
 } from "recharts";
 
-import logoAsset from "@/assets/logo-sawaz.png.asset.json";
+import sawazLogo from "@/assets/logo-sawaz.png";
 import { BLOCK_LABEL, type ReviewBlockKind } from "@/lib/studio/review-content";
 import type { ReviewChart, ReviewContent } from "@/lib/studio/review-content";
 import type { EligibleMetric, ReviewTheme } from "@/lib/studio/review.functions";
 import { cn } from "@/lib/utils";
 
 /**
- * Preview Client ÔÇö rendu exact de la future Sawaz Strategic Review.
- * Th├¿me dynamique : les tokens viennent du tenant (clients.theme_tokens),
- * aucun client n'est cod├® en dur. Ne re├ºoit que du mat├®riel client-safe.
+ * Preview Client — rendu exact de la future Sawaz Strategic Review.
+ * Thème dynamique : les tokens viennent du tenant (clients.theme_tokens),
+ * aucun client n'est codé en dur. Ne reçoit que du matériel client-safe.
  */
 
 const TOKEN_MAP: Record<string, string> = {
@@ -94,7 +94,7 @@ export function ReviewPreview({
   charts: ReviewChart[];
   theme: ReviewTheme;
   metrics: EligibleMetric[];
-  /** La tra├ºabilit├® vers les m├®triques sources est visible en interne. */
+  /** La traçabilité vers les métriques sources est visible en interne. */
   showProvenance?: boolean;
 }) {
   const metricLabel = new Map(metrics.map((m) => [m.id, m.metricKey] as const));
@@ -112,9 +112,9 @@ export function ReviewPreview({
           )}
           <div className="flex items-center gap-3">
             <span className="hidden text-eyebrow text-muted-foreground sm:block">
-              Accompagn├® par
+              Accompagné par
             </span>
-            <img src={logoAsset.url} alt="Sawaz" className="h-8 w-8 rounded-full bg-foreground/90 object-contain p-1" />
+            <img src={sawazLogo} alt="Sawaz" className="h-8 w-8 rounded-full bg-foreground/90 object-contain p-1" />
           </div>
         </div>
       </header>
@@ -130,9 +130,9 @@ export function ReviewPreview({
           ) : null}
         </div>
 
-        <Section eyebrow="Synth├¿se" title="Executive Summary">
+        <Section eyebrow="Synthèse" title="Executive Summary">
           <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
-            {content.executiveSummary || "ÔÇö"}
+            {content.executiveSummary || "—"}
           </p>
         </Section>
 
@@ -178,7 +178,7 @@ export function ReviewPreview({
         )}
 
         {charts.length > 0 ? (
-          <Section eyebrow="Graphiques" title="Lecture des donn├®es valid├®es">
+          <Section eyebrow="Graphiques" title="Lecture des données validées">
             <div className="grid gap-6 lg:grid-cols-2">
               {charts.map((c) => (
                 <div key={c.id} className="rounded-lg border border-border bg-surface-raised p-4">
@@ -225,9 +225,9 @@ export function ReviewPreview({
                   </div>
                   {showProvenance ? (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      M├®triques sources :{" "}
-                      {c.sourceMetricIds.map((id) => metricLabel.get(id) ?? id).join(", ")} ┬À
-                      p├®riode {c.periodStart ?? "ÔÇö"} ÔåÆ {c.periodEnd ?? "ÔÇö"} ┬À g├®n├®r├® le{" "}
+                      Métriques sources :{" "}
+                      {c.sourceMetricIds.map((id) => metricLabel.get(id) ?? id).join(", ")} ·
+                      période {c.periodStart ?? "—"} → {c.periodEnd ?? "—"} · généré le{" "}
                       {new Date(c.generatedAt).toLocaleDateString("fr-FR")}
                     </p>
                   ) : null}
@@ -247,7 +247,7 @@ export function ReviewPreview({
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">{a.detail}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Pilote : {a.owner} {a.horizon ? `┬À ${a.horizon}` : ""}
+                    Pilote : {a.owner} {a.horizon ? `· ${a.horizon}` : ""}
                   </p>
                 </li>
               ))}

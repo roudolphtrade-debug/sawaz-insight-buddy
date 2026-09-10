@@ -14,7 +14,7 @@ type AnalysisType = StudioAnalysis["type"];
 
 const TYPE_LABEL: Record<AnalysisType, string> = {
   constat: "Constat",
-  hypothese: "Hypoth├¿se",
+  hypothese: "Hypothèse",
   recommandation: "Recommandation",
   note: "Note interne",
 };
@@ -26,10 +26,6 @@ const TYPE_TONE = {
   note: "neutral",
 } as const;
 
-/**
- * Analyses internes. Les notes internes sont visuellement isol├®es et
- * forc├®es en visibilit├® `internal` c├┤t├® serveur : jamais expos├®es au client.
- */
 export function AnalysesPanel({
   clientId,
   analyses,
@@ -66,6 +62,7 @@ export function AnalysesPanel({
         setError(res.error);
         return;
       }
+
       setTitle("");
       setBody("");
       setError(null);
@@ -83,10 +80,15 @@ export function AnalysesPanel({
 
   return (
     <div className="space-y-6">
-      <Panel eyebrow="Analyse Sawaz" title="Constats, hypoth├¿ses et recommandations">
+      <Panel eyebrow="4. Analyse Sawaz" title="Constats, hypothèses et recommandations">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Cette zone transforme les données collectées en enseignements exploitables. Seuls les
+          éléments destinés au client pourront alimenter la restitution.
+        </p>
+
         {shared.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aucune analyse enregistr├®e pour ce client.
+            Aucune analyse enregistrée pour ce client.
           </p>
         ) : (
           <ul className="space-y-3">
@@ -116,7 +118,7 @@ export function AnalysesPanel({
         eyebrow="Confidentiel"
         title="Notes internes Sawaz"
         className="border-dashed"
-        aside={<StatusBadge tone="neutral">Jamais visible c├┤t├® client</StatusBadge>}
+        aside={<StatusBadge tone="neutral">Jamais visibles côté client</StatusBadge>}
       >
         {internal.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aucune note interne.</p>
@@ -144,7 +146,7 @@ export function AnalysesPanel({
       </Panel>
 
       {canWrite ? (
-        <Panel eyebrow="Nouvelle entr├®e" title="Ajouter une analyse">
+        <Panel eyebrow="Nouvelle analyse" title="Ajouter un élément d’analyse">
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               {(Object.keys(TYPE_LABEL) as AnalysisType[]).map((t) => (
@@ -163,6 +165,7 @@ export function AnalysesPanel({
                 </button>
               ))}
             </div>
+
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -170,6 +173,7 @@ export function AnalysesPanel({
               aria-label="Titre de l'analyse"
               className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-foreground outline-none focus:border-sawaz"
             />
+
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -178,11 +182,13 @@ export function AnalysesPanel({
               aria-label="Contenu de l'analyse"
               className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-foreground outline-none focus:border-sawaz"
             />
+
             {error ? (
               <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
             ) : null}
+
             <button
               type="button"
               disabled={!title.trim() || createMutation.isPending}

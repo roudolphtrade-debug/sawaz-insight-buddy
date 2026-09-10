@@ -7,12 +7,12 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    // Premier acc├¿s ├®quipe : active le r├┤le si l'email figure dans les invitations.
-    // Sans invitation, la fonction ne fait rien (aucune ├®l├®vation possible).
+    // Premier accès équipe : active le rôle si l'email figure dans les invitations.
+    // Sans invitation, la fonction ne fait rien (aucune élévation possible).
     try {
       await supabase.rpc("claim_team_access");
     } catch {
-      /* acc├¿s d├®j├á actif ou non invit├® : aucun impact sur la navigation */
+      /* accès déjà actif ou non invité : aucun impact sur la navigation */
     }
     return { user: data.user };
   },

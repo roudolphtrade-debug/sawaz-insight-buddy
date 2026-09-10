@@ -11,16 +11,16 @@ import { listStudioClients, studioBootstrap } from "@/lib/studio/studio.function
 export const Route = createFileRoute("/_authenticated/studio/")({
   head: () => ({
     meta: [
-      { title: "Results Studio ÔÇö Espace interne Sawaz" },
+      { title: "Results Studio — Espace interne Sawaz" },
       {
         name: "description",
         content:
-          "Espace interne Sawaz : suivi multi-client des collectes r├®elles, fichiers re├ºus, m├®triques et analyses.",
+          "Espace interne Sawaz : suivi multi-client des collectes réelles, fichiers reçus, métriques et analyses.",
       },
-      { property: "og:title", content: "Results Studio ÔÇö Espace interne Sawaz" },
+      { property: "og:title", content: "Results Studio — Espace interne Sawaz" },
       {
         property: "og:description",
-        content: "Suivi multi-client des collectes r├®elles et des analyses Sawaz.",
+        content: "Suivi multi-client des collectes réelles et des analyses Sawaz.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -53,7 +53,7 @@ function StudioIndex() {
   return (
     <StudioShell
       title="Dossiers clients"
-      subtitle="Donn├®es r├®elles issues des collectes. L'interface reste identique quel que soit le client."
+      subtitle="Données réelles issues des collectes. L'interface reste identique quel que soit le client."
     >
       {isLoading ? <Panel>Chargement des dossiersÔÇª</Panel> : null}
 
@@ -66,8 +66,8 @@ function StudioIndex() {
       {data?.ok && data.data.clients.length === 0 ? (
         <Panel title="Aucun client accessible">
           <p className="text-sm text-muted-foreground">
-            Ton compte n'a pas encore de client rattach├®, ou aucun client n'existe. Un owner Sawaz
-            doit t'attribuer un r├┤le et un p├®rim├¿tre.
+            Ton compte n'a pas encore de client rattaché, ou aucun client n'existe. Un owner Sawaz
+            doit t'attribuer un rôle et un périmètre.
           </p>
         </Panel>
       ) : null}
@@ -86,12 +86,12 @@ function StudioIndex() {
                     <h2 className="font-display text-lg font-bold text-foreground">
                       {client.name}
                     </h2>
-                    <p className="text-sm text-muted-foreground">{client.sector ?? "ÔÇö"}</p>
+                    <p className="text-sm text-muted-foreground">{client.sector ?? "—"}</p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
-                    {client.isDemo ? <StatusBadge tone="neutral">D├®mo</StatusBadge> : null}
+                    {client.isDemo ? <StatusBadge tone="neutral">Démo</StatusBadge> : null}
                     <StatusBadge tone={client.reviewPublished ? "gold" : "sawaz"}>
-                      {client.reviewPublished ? "Review publi├®e" : "Review non publi├®e"}
+                      {client.reviewPublished ? "Review publiée" : "Review non publiée"}
                     </StatusBadge>
                   </div>
                 </div>
@@ -109,7 +109,7 @@ function StudioIndex() {
                 </p>
                 {client.metricsToReview > 0 ? (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {client.metricsToReview} m├®trique(s) ├á v├®rifier
+                    {client.metricsToReview} métrique(s) à vérifier
                   </p>
                 ) : null}
               </Link>

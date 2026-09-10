@@ -7,9 +7,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { reviewStudioMetric, type StudioMetric } from "@/lib/studio/studio.functions";
 
 const STATUS_LABEL = {
-  a_verifier: "├Ç v├®rifier",
-  valide: "Valid├®",
-  rejete: "Rejet├®",
+  a_verifier: "À vérifier",
+  valide: "Validé",
+  rejete: "Rejeté",
 } as const;
 
 const STATUS_TONE = {
@@ -18,7 +18,7 @@ const STATUS_TONE = {
   rejete: "neutral",
 } as const;
 
-/** Revue humaine des m├®triques extraites, avec correction tra├ºable. */
+/** Revue humaine des métriques extraites, avec correction traçable. */
 export function MetricsReviewPanel({
   metrics,
   canWrite,
@@ -43,18 +43,18 @@ export function MetricsReviewPanel({
 
   return (
     <Panel
-      eyebrow="Donn├®es extraites"
-      title="Revue des m├®triques"
+      eyebrow="3. Données extraites"
+      title="Revue et validation des métriques"
       aside={
         <StatusBadge tone="neutral">
-          {metrics.filter((m) => m.reviewStatus === "a_verifier").length} ├á v├®rifier
+          {metrics.filter((m) => m.reviewStatus === "a_verifier").length} à vérifier
         </StatusBadge>
       }
     >
       {metrics.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Aucune m├®trique extraite pour l'instant. Elles appara├«tront ici d├¿s leur extraction depuis
-          les fichiers re├ºus.
+          Aucune métrique extraite pour l'instant. Elles apparaîtront ici dès leur extraction depuis
+          les fichiers reçus.
         </p>
       ) : (
         <ul className="space-y-3">
@@ -69,16 +69,16 @@ export function MetricsReviewPanel({
                     ) : null}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {m.valueNum ?? m.valueText ?? "ÔÇö"} {m.unit ?? ""} ┬À{" "}
-                    {m.periodStart ?? "?"} ÔåÆ {m.periodEnd ?? "?"} ┬À provenance {m.provenance}
+                    {m.valueNum ?? m.valueText ?? "—"} {m.unit ?? ""} ·{" "}
+                    {m.periodStart ?? "?"} → {m.periodEnd ?? "?"} · provenance {m.provenance}
                     {m.confidence !== null
-                      ? ` ┬À confiance ${Math.round(m.confidence * 100)}%`
+                      ? ` · confiance ${Math.round(m.confidence * 100)}%`
                       : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Source : {m.sourceFileName ?? "non rattach├®e"}
+                    Source : {m.sourceFileName ?? "non rattachée"}
                     {m.originalValueNum !== null || m.originalValueText !== null
-                      ? ` ┬À valeur d'origine ${m.originalValueNum ?? m.originalValueText}`
+                      ? ` · valeur d'origine ${m.originalValueNum ?? m.originalValueText}`
                       : ""}
                   </p>
                 </div>
@@ -91,8 +91,8 @@ export function MetricsReviewPanel({
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <input
                     type="number"
-                    aria-label={`Valeur corrig├®e pour ${m.metricKey}`}
-                    placeholder="Valeur corrig├®e"
+                    aria-label={`Valeur corrigée pour ${m.metricKey}`}
+                    placeholder="Valeur corrigée"
                     value={drafts[m.id] ?? ""}
                     onChange={(e) => setDrafts({ ...drafts, [m.id]: e.target.value })}
                     className="w-40 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-sawaz"

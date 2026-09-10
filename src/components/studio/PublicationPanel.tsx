@@ -12,10 +12,10 @@ import {
   revokeReviewAccess,
 } from "@/lib/studio/publication.functions";
 
-/** Pass 3F ÔÇö ├ëtat de publication, destinataires, lien s├®curis├® et historique. */
+/** Pass 3F — État de publication, destinataires, lien sécurisé et historique. */
 
 function date(value: string | null) {
-  if (!value) return "ÔÇö";
+  if (!value) return "—";
   return new Date(value).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 }
 
@@ -42,7 +42,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
         return;
       }
       setFreshUrl(res.data.url);
-      toast.success("Nouveau lien g├®n├®r├® ÔÇö l'ancien est r├®voqu├®");
+      toast.success("Nouveau lien généré — l'ancien est révoqué");
       void qc.invalidateQueries({ queryKey: ["review-publication", reviewId] });
     },
   });
@@ -55,7 +55,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
         return;
       }
       setFreshUrl(null);
-      toast.success("Acc├¿s client r├®voqu├®");
+      toast.success("Accès client révoqué");
       void qc.invalidateQueries({ queryKey: ["review-publication", reviewId] });
     },
   });
@@ -67,12 +67,12 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
   return (
     <Panel
       eyebrow="Publication"
-      title="Acc├¿s client"
+      title="Accès client"
       aside={
         state.publishedVersionNo ? (
-          <StatusBadge tone="gold">Publi├®e ÔÇö v{state.publishedVersionNo}</StatusBadge>
+          <StatusBadge tone="gold">Publiée — v{state.publishedVersionNo}</StatusBadge>
         ) : (
-          <StatusBadge tone="neutral">Non publi├®e</StatusBadge>
+          <StatusBadge tone="neutral">Non publiée</StatusBadge>
         )
       }
     >
@@ -85,7 +85,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
           <dt className="text-eyebrow text-muted-foreground">Destinataires</dt>
           <dd className="text-sm text-foreground">
             {state.recipients.length === 0
-              ? "Aucun contact enregistr├®"
+              ? "Aucun contact enregistré"
               : state.recipients
                   .map((r) => `${r.email}${r.isPrimary ? " (principal)" : ""}`)
                   .join(", ")}
@@ -96,7 +96,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
           <dd className="text-sm text-foreground">
             {activeLink ? (
               <>
-                Actif ┬À {activeLink.useCount} ouverture{activeLink.useCount > 1 ? "s" : ""} ┬À
+                Actif · {activeLink.useCount} ouverture{activeLink.useCount > 1 ? "s" : ""} ·
                 expire le {date(activeLink.expiresAt)}
               </>
             ) : (
@@ -108,7 +108,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
 
       {freshUrl ? (
         <p className="mt-4 break-all rounded-lg border border-sawaz/40 bg-sawaz/10 p-3 text-xs text-foreground">
-          Lien affich├® une seule fois (seul son hash est conserv├®) : {freshUrl}
+          Lien affiché une seule fois (seul son hash est conservé) : {freshUrl}
         </p>
       ) : null}
 
@@ -119,19 +119,19 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
             disabled={rotateMutation.isPending || !state.publishedVersionNo}
             onClick={() => rotateMutation.mutate()}
           >
-            R├®g├®n├®rer le lien
+            Régénérer le lien
           </Button>
           <Button
             variant="ghost"
             disabled={revokeMutation.isPending || !activeLink}
             onClick={() => revokeMutation.mutate()}
           >
-            R├®voquer l'acc├¿s
+            Révoquer l'accès
           </Button>
         </div>
       ) : (
         <p className="mt-4 text-xs text-muted-foreground">
-          Publication, rotation et r├®vocation du lien sont r├®serv├®es au r├┤le owner.
+          Publication, rotation et révocation du lien sont réservées au rôle owner.
         </p>
       )}
 
@@ -141,7 +141,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
           <ul className="mt-2 space-y-1.5">
             {state.history.map((h) => (
               <li key={h.versionNo} className="text-sm text-muted-foreground">
-                v{h.versionNo} ┬À {date(h.publishedAt)} ┬À {h.status}
+                v{h.versionNo} · {date(h.publishedAt)} · {h.status}
               </li>
             ))}
             {state.history.length === 0 ? (
@@ -150,11 +150,11 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
           </ul>
         </div>
         <div>
-          <p className="text-eyebrow text-muted-foreground">Notifications envoy├®es</p>
+          <p className="text-eyebrow text-muted-foreground">Notifications envoyées</p>
           <ul className="mt-2 space-y-1.5">
             {state.notifications.map((n) => (
               <li key={n.id} className="text-sm text-muted-foreground">
-                {n.recipient} ┬À v{n.versionNo ?? "ÔÇö"} ┬À {n.status} ┬À {date(n.sentAt ?? n.createdAt)}
+                {n.recipient} · v{n.versionNo ?? "—"} · {n.status} · {date(n.sentAt ?? n.createdAt)}
               </li>
             ))}
             {state.notifications.length === 0 ? (
@@ -165,17 +165,17 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
       </div>
 
       <div className="mt-6">
-        <p className="text-eyebrow text-muted-foreground">Liens ├®mis</p>
+        <p className="text-eyebrow text-muted-foreground">Liens émis</p>
         <ul className="mt-2 space-y-1.5">
           {state.links.map((l) => (
             <li key={l.id} className="text-sm text-muted-foreground">
-              v{l.versionNo ?? "ÔÇö"} ┬À cr├®├® le {date(l.createdAt)} ┬À{" "}
-              {l.revokedAt ? `r├®voqu├® le ${date(l.revokedAt)}` : l.active ? "actif" : "expir├®"} ┬À
-              derni├¿re ouverture {date(l.lastUsedAt)}
+              v{l.versionNo ?? "—"} · créé le {date(l.createdAt)} ·{" "}
+              {l.revokedAt ? `révoqué le ${date(l.revokedAt)}` : l.active ? "actif" : "expiré"} ·
+              dernière ouverture {date(l.lastUsedAt)}
             </li>
           ))}
           {state.links.length === 0 ? (
-            <li className="text-sm text-muted-foreground">Aucun lien ├®mis.</li>
+            <li className="text-sm text-muted-foreground">Aucun lien émis.</li>
           ) : null}
         </ul>
       </div>

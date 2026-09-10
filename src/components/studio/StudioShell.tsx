@@ -1,12 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
-import logoAsset from "@/assets/logo-sawaz.png.asset.json";
+import sawazLogo from "@/assets/logo-sawaz.png";
 import { StatusBadge } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import type { DataStatus } from "@/lib/tenant/types";
 
-/** Chrome interne Sawaz ÔÇö identique quel que soit le client consult├®. */
+/** Coque interne Sawaz, identique quel que soit le client consulté. */
 export function StudioShell({
   title,
   subtitle,
@@ -23,7 +23,11 @@ export function StudioShell({
       <header className="border-b border-border bg-surface/60">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link to="/studio" className="flex items-center gap-3">
-            <img src={logoAsset.url} alt="Sawaz" className="h-8 w-8 rounded-full bg-foreground/90 object-contain p-1" />
+            <img
+              src={sawazLogo}
+              alt="Sawaz"
+              className="h-9 w-9 rounded-xl bg-foreground/90 object-contain p-1"
+            />
             <span className="leading-tight">
               <span className="block font-display text-sm font-extrabold text-foreground">
                 Results Studio
@@ -31,11 +35,12 @@ export function StudioShell({
               <span className="text-eyebrow text-sawaz">Interne Sawaz</span>
             </span>
           </Link>
-          <nav className="flex items-center gap-3 text-sm text-muted-foreground">
+
+          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link to="/studio" className="hover:text-foreground">
               Clients
             </Link>
-            <Link to="/" className="hover:text-foreground">
+            <Link to="/collecte" className="hover:text-foreground">
               Collecte
             </Link>
           </nav>
@@ -48,12 +53,11 @@ export function StudioShell({
             <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
               {title}
             </h1>
-            {subtitle ? (
-              <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
-            ) : null}
+            {subtitle ? <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>
           {actions}
         </div>
+
         <div className="mt-8 space-y-6">{children}</div>
       </main>
     </div>

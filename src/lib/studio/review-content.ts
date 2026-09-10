@@ -1,6 +1,6 @@
 /**
- * Pass 3E ÔÇö Strategic Review : structure de contenu d'une version.
- * Module client-safe (aucun acc├¿s serveur) : types + normalisation partag├®s
+ * Pass 3E — Strategic Review : structure de contenu d'une version.
+ * Module client-safe (aucun accès serveur) : types + normalisation partagés
  * entre le builder interne et la Preview client.
  */
 
@@ -11,9 +11,9 @@ export type ReviewBlock = {
   kind: ReviewBlockKind;
   title: string;
   body: string;
-  /** Tra├ºabilit├® : m├®triques valid├®es ├á l'origine du bloc. */
+  /** Traçabilité : métriques validées à l'origine du bloc. */
   sourceMetricIds: string[];
-  /** Analyse interne (constat/hypoth├¿se/recommandation) reprise, jamais une note. */
+  /** Analyse interne (constat/hypothèse/recommandation) reprise, jamais une note. */
   analysisId?: string | null;
 };
 
@@ -29,7 +29,7 @@ export type ReviewChart = {
   id: string;
   title: string;
   type: "bar" | "line";
-  /** Provenance : m├®triques valid├®es uniquement. */
+  /** Provenance : métriques validées uniquement. */
   sourceMetricIds: string[];
   periodStart: string | null;
   periodEnd: string | null;
@@ -56,25 +56,25 @@ export type ReviewContent = {
 };
 
 export const BLOCK_LABEL: Record<ReviewBlockKind, string> = {
-  fait: "Fait observ├®",
-  interpretation: "Interpr├®tation",
-  hypothese: "Hypoth├¿se",
+  fait: "Fait observé",
+  interpretation: "Interprétation",
+  hypothese: "Hypothèse",
   recommandation: "Recommandation",
 };
 
 export const BLOCK_HINT: Record<ReviewBlockKind, string> = {
-  fait: "Mesur├®, non discutable ÔÇö issu d'une m├®trique valid├®e.",
-  interpretation: "Lecture argument├®e d'un fait, assum├®e par Sawaz.",
-  hypothese: "Piste ├á confirmer, encore incertaine.",
-  recommandation: "Action propos├®e, d├®riv├®e des faits et interpr├®tations.",
+  fait: "Mesuré, non discutable — issu d'une métrique validée.",
+  interpretation: "Lecture argumentée d'un fait, assumée par Sawaz.",
+  hypothese: "Piste à confirmer, encore incertaine.",
+  recommandation: "Action proposée, dérivée des faits et interprétations.",
 };
 
 export const CTA_LABEL: Record<ReviewCtaType, string> = {
   aucun: "Aucun CTA",
-  etape_suivante: "├ëtape suivante",
+  etape_suivante: "Étape suivante",
   contact: "Contacter Sawaz",
-  rendez_vous: "Planifier un ├®change",
-  personnalise: "Personnalis├®",
+  rendez_vous: "Planifier un échange",
+  personnalise: "Personnalisé",
 };
 
 export const BLOCK_KINDS: ReviewBlockKind[] = [
@@ -102,8 +102,8 @@ const isKind = (v: unknown): v is ReviewBlockKind =>
 
 /**
  * Normalise un contenu venant de la base ou du client.
- * `allowedMetricIds` / `allowedAnalysisIds` : garde-fou anti-fuite ÔÇö toute
- * r├®f├®rence ├á une m├®trique non valid├®e ou ├á une analyse interne est retir├®e.
+ * `allowedMetricIds` / `allowedAnalysisIds` : garde-fou anti-fuite — toute
+ * référence à une métrique non validée ou à une analyse interne est retirée.
  */
 export function normalizeReviewContent(
   raw: unknown,
@@ -197,12 +197,12 @@ export type ReviewStatus = "draft" | "in_review" | "approved" | "published" | "a
 export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
   draft: "Brouillon",
   in_review: "En revue",
-  approved: "Approuv├®e",
-  published: "Publi├®e",
-  archived: "Archiv├®e",
+  approved: "Approuvée",
+  published: "Publiée",
+  archived: "Archivée",
 };
 
-/** Transitions autoris├®es du workflow ├®ditorial. */
+/** Transitions autorisées du workflow éditorial. */
 export const NEXT_STATUS: Record<ReviewStatus, ReviewStatus[]> = {
   draft: ["in_review"],
   in_review: ["approved", "draft"],

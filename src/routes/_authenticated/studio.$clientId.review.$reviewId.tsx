@@ -34,16 +34,16 @@ import {
 export const Route = createFileRoute("/_authenticated/studio/$clientId/review/$reviewId")({
   head: () => ({
     meta: [
-      { title: "Strategic Review Builder ÔÇö Sawaz" },
+      { title: "Strategic Review Builder — Sawaz" },
       {
         name: "description",
         content:
-          "Construction d'une Sawaz Strategic Review : faits, interpr├®tations, hypoth├¿ses, recommandations et graphiques issus des m├®triques valid├®es.",
+          "Construction d'une Sawaz Strategic Review : faits, interprétations, hypothèses, recommandations et graphiques issus des métriques validées.",
       },
-      { property: "og:title", content: "Strategic Review Builder ÔÇö Sawaz" },
+      { property: "og:title", content: "Strategic Review Builder — Sawaz" },
       {
         property: "og:description",
-        content: "Workflow ├®ditorial Draft ÔåÆ In Review ÔåÆ Approved ÔåÆ Published.",
+        content: "Workflow éditorial Draft → In Review → Approved → Published.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -91,10 +91,10 @@ function ReviewBuilder() {
         return;
       }
       if (res.data.forked) {
-        toast.success("Version publi├®e immuable ÔÇö nouvelle version cr├®├®e");
+        toast.success("Version publiée immuable — nouvelle version créée");
         setVersionId(res.data.versionId);
       } else {
-        toast.success("Version enregistr├®e");
+        toast.success("Version enregistrée");
       }
       void qc.invalidateQueries({ queryKey: ["review-workspace"] });
     },
@@ -115,8 +115,8 @@ function ReviewBuilder() {
       if (res.data.access) {
         toast.success(
           res.data.access.notified.length > 0
-            ? `Acc├¿s client ouvert ÔÇö notifi├® : ${res.data.access.notified.join(", ")}`
-            : "Acc├¿s client ouvert ÔÇö aucun contact notifi├®",
+            ? `Accès client ouvert — notifié : ${res.data.access.notified.join(", ")}`
+            : "Accès client ouvert — aucun contact notifié",
         );
       }
       void qc.invalidateQueries({ queryKey: ["review-workspace"] });
@@ -189,14 +189,14 @@ function ReviewBuilder() {
   const addChartFromMetrics = () => {
     const selected = ws.metrics.filter((m) => m.valueNum !== null).slice(0, 6);
     if (selected.length === 0) {
-      toast.error("Aucune m├®trique valid├®e num├®rique disponible");
+      toast.error("Aucune métrique validée numérique disponible");
       return;
     }
     setCharts([
       ...charts,
       {
         id: uid(),
-        title: "M├®triques valid├®es",
+        title: "Métriques validées",
         type: "bar",
         sourceMetricIds: selected.map((m) => m.id),
         periodStart: selected[0]?.periodStart ?? null,
@@ -214,8 +214,8 @@ function ReviewBuilder() {
 
   return (
     <StudioShell
-      title={`Strategic Review ÔÇö ${ws.theme.name}`}
-      subtitle={`${ws.review.projectName} ┬À version ${ws.version.versionNo} ┬À r├┤le : ${ws.role ?? "aucun"}`}
+      title={`Strategic Review — ${ws.theme.name}`}
+      subtitle={`${ws.review.projectName} · version ${ws.version.versionNo} · rôle : ${ws.role ?? "aucun"}`}
       actions={
         <Link
           to="/studio/$clientId"
@@ -238,7 +238,7 @@ function ReviewBuilder() {
                 onClick={() => setVersionId(v.id)}
                 className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                v{v.versionNo} ┬À {REVIEW_STATUS_LABEL[v.status]}
+                v{v.versionNo} · {REVIEW_STATUS_LABEL[v.status]}
               </button>
             ))}
           </div>
@@ -265,19 +265,19 @@ function ReviewBuilder() {
             disabled={!canWrite || saveMutation.isPending}
             onClick={() => saveMutation.mutate()}
           >
-            {locked ? "Cr├®er une nouvelle version" : "Enregistrer"}
+            {locked ? "Créer une nouvelle version" : "Enregistrer"}
           </Button>
           {!isOwner ? (
-            <StatusBadge tone="neutral">Publication r├®serv├®e au r├┤le owner</StatusBadge>
+            <StatusBadge tone="neutral">Publication réservée au rôle owner</StatusBadge>
           ) : null}
           {locked ? (
             <StatusBadge tone="sawaz">
-              Version {ws.version.status === "published" ? "publi├®e" : "archiv├®e"} ÔÇö immuable
+              Version {ws.version.status === "published" ? "publiée" : "archivée"} — immuable
             </StatusBadge>
           ) : null}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          La publication rend la version immuable, ouvre un lien s├®curis├® r├®vocable et d├®clenche
+          La publication rend la version immuable, ouvre un lien sécurisé révocable et déclenche
           une notification unique par destinataire.
         </p>
       </Panel>
@@ -296,7 +296,7 @@ function ReviewBuilder() {
             />
           </div>
           <div>
-            <Label htmlFor="rv-period">P├®riode</Label>
+            <Label htmlFor="rv-period">Période</Label>
             <Input
               id="rv-period"
               value={content.periodLabel}
@@ -306,7 +306,7 @@ function ReviewBuilder() {
           </div>
         </div>
         <div className="mt-3">
-          <Label htmlFor="rv-summary">Synth├¿se</Label>
+          <Label htmlFor="rv-summary">Synthèse</Label>
           <Textarea
             id="rv-summary"
             rows={4}
@@ -319,7 +319,7 @@ function ReviewBuilder() {
 
       <Panel
         eyebrow="Contenu"
-        title="Fait / Interpr├®tation / Hypoth├¿se / Recommandation"
+        title="Fait / Interprétation / Hypothèse / Recommandation"
         aside={
           <div className="flex flex-wrap gap-2">
             {BLOCK_KINDS.map((k) => (
@@ -338,7 +338,7 @@ function ReviewBuilder() {
       >
         {ws.analyses.length > 0 ? (
           <div className="mb-4 rounded-lg border border-border bg-surface-raised p-3">
-            <p className="text-eyebrow text-sawaz">Analyses ├®ligibles (jamais les notes internes)</p>
+            <p className="text-eyebrow text-sawaz">Analyses éligibles (jamais les notes internes)</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {ws.analyses.map((a) => (
                 <Button
@@ -348,7 +348,7 @@ function ReviewBuilder() {
                   disabled={!canWrite}
                   onClick={() => importAnalysis(a.id)}
                 >
-                  {a.type} ÔÇö {a.title ?? "sans titre"}
+                  {a.type} — {a.title ?? "sans titre"}
                 </Button>
               ))}
             </div>
@@ -403,7 +403,7 @@ function ReviewBuilder() {
               />
               <div className="mt-3">
                 <p className="text-eyebrow text-muted-foreground">
-                  M├®triques sources (valid├®es uniquement)
+                  Métriques sources (validées uniquement)
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {ws.metrics.map((m) => {
@@ -439,7 +439,7 @@ function ReviewBuilder() {
                   })}
                   {ws.metrics.length === 0 ? (
                     <span className="text-xs text-muted-foreground">
-                      Aucune m├®trique valid├®e pour l'instant.
+                      Aucune métrique validée pour l'instant.
                     </span>
                   ) : null}
                 </div>
@@ -454,9 +454,9 @@ function ReviewBuilder() {
 
       <Panel
         eyebrow="Graphiques"
-        title="Data-driven, tra├ºables jusqu'aux m├®triques sources"
+        title="Data-driven, traçables jusqu'aux métriques sources"
         aside={
-          <Button size="sm" variant="outline" disabled={!canWrite} onClick={addChartFromMetrics}>
+          <Button type="button" size="sm" variant="outline" disabled={!canWrite || ws.metrics.every((m) => m.valueNum === null)} onClick={addChartFromMetrics}>
             + Graphique
           </Button>
         }
@@ -478,7 +478,7 @@ function ReviewBuilder() {
                   }
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {c.sourceMetricIds.length} m├®triques ┬À g├®n├®r├® le{" "}
+                  {c.sourceMetricIds.length} métriques · généré le{" "}
                   {new Date(c.generatedAt).toLocaleDateString("fr-FR")}
                 </p>
               </div>
@@ -565,7 +565,7 @@ function ReviewBuilder() {
               <Textarea
                 className="mt-2"
                 rows={2}
-                placeholder="D├®tail"
+                placeholder="Détail"
                 value={a.detail}
                 disabled={!canWrite}
                 onChange={(e) =>
@@ -635,7 +635,7 @@ function ReviewBuilder() {
           {content.cta.type !== "aucun" ? (
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Input
-                placeholder="Libell├® du bouton"
+                placeholder="Libellé du bouton"
                 value={content.cta.label}
                 disabled={!canWrite}
                 onChange={(e) => patch({ cta: { ...content.cta, label: e.target.value } })}

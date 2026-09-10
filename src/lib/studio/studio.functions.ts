@@ -3,10 +3,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Results Studio ÔÇö lecture et ├®criture des donn├®es r├®elles (Pass 3D).
- * Toutes les requ├¬tes passent par le client authentifi├® : la RLS s'applique en tant
+ * Results Studio — lecture et écriture des données réelles (Pass 3D).
+ * Toutes les requêtes passent par le client authentifié : la RLS s'applique en tant
  * qu'utilisateur Sawaz (isolation tenant via has_client_access / can_write_client).
- * Aucun dataset client n'est cod├® en dur.
+ * Aucun dataset client n'est codé en dur.
  */
 
 type Ok<T> = { ok: true; data: T };
@@ -114,8 +114,8 @@ async function resolveRole(
 }
 
 /**
- * Rattache le compte authentifi├® ├á `public.users` et attribue le r├┤le owner
- * au tout premier utilisateur (amor├ºage de l'espace interne Sawaz).
+ * Rattache le compte authentifié à `public.users` et attribue le rôle owner
+ * au tout premier utilisateur (amorçage de l'espace interne Sawaz).
  */
 export const studioBootstrap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -217,7 +217,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
       .eq("slug", data.clientSlug)
       .maybeSingle();
 
-    if (!client) return { ok: false, error: "Client introuvable ou acc├¿s refus├®" };
+    if (!client) return { ok: false, error: "Client introuvable ou accès refusé" };
 
     const [projects, collections, submissions, answers, files, metrics, analyses, recipients] =
       await Promise.all([
@@ -360,25 +360,25 @@ export const getStudioDossier = createServerFn({ method: "POST" })
     };
   });
 
-/** URL de t├®l├®chargement sign├®e (5 min) ÔÇö le bucket reste priv├®. */
+/** URL de téléchargement signée (5 min) — le bucket reste privé. */
 export const getStudioFileUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { fileId: string }) => ({ fileId: String(input.fileId ?? "") }))
   .handler(async ({ data, context }): Promise<Result<{ url: string; name: string }>> => {
-    // La lecture passe par la RLS : un fichier hors p├®rim├¿tre est invisible.
+    // La lecture passe par la RLS : un fichier hors périmètre est invisible.
     const { data: file } = await context.supabase
       .from("files")
       .select("id, storage_path, original_name")
       .eq("id", data.fileId)
       .maybeSingle();
 
-    if (!file) return { ok: false, error: "Fichier introuvable ou acc├¿s refus├®" };
+    if (!file) return { ok: false, error: "Fichier introuvable ou accès refusé" };
 
     const { data: signed, error } = await context.supabase.storage
       .from("collection-files")
       .createSignedUrl(file.storage_path, 300);
 
-    if (error || !signed) return { ok: false, error: "Lien de t├®l├®chargement indisponible" };
+    if (error || !signed) return { ok: false, error: "Lien de téléchargement indisponible" };
     return { ok: true, data: { url: signed.signedUrl, name: file.original_name } };
   });
 
@@ -397,7 +397,7 @@ export const saveStudioAnalysis = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<Result<StudioAnalysis>> => {
     const { supabase, userId } = context;
-    // Une note interne ne peut jamais ├¬tre marqu├®e visible c├┤t├® client.
+    // Une note interne ne peut jamais être marquée visible côté client.
     const visibility = data.type === "note" ? "internal" : data.visibility;
 
     const payload = {
@@ -418,7 +418,7 @@ export const saveStudioAnalysis = createServerFn({ method: "POST" })
       .select("id, type, title, body, visibility, collection_id, submission_id, updated_at")
       .maybeSingle();
 
-    if (error || !row) return { ok: false, error: "Enregistrement refus├® (droits insuffisants)" };
+    if (error || !row) return { ok: false, error: "Enregistrement refusé (droits insuffisants)" };
 
     await supabase.from("audit_logs").insert({
       client_id: data.clientId,
@@ -450,7 +450,7 @@ export const deleteStudioAnalysis = createServerFn({ method: "POST" })
   .inputValidator((input: { id: string; clientId: string }) => input)
   .handler(async ({ data, context }): Promise<Result<{ deleted: true }>> => {
     const { error } = await context.supabase.from("analyses").delete().eq("id", data.id);
-    if (error) return { ok: false, error: "Suppression refus├®e" };
+    if (error) return { ok: false, error: "Suppression refusée" };
     await context.supabase.from("audit_logs").insert({
       client_id: data.clientId,
       actor_type: "user",
@@ -462,7 +462,7 @@ export const deleteStudioAnalysis = createServerFn({ method: "POST" })
     return { ok: true, data: { deleted: true } };
   });
 
-/** Revue humaine tra├ºable d'une m├®trique extraite. */
+/** Revue humaine traçable d'une métrique extraite. */
 export const reviewStudioMetric = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -483,7 +483,7 @@ export const reviewStudioMetric = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
 
-    if (!current) return { ok: false, error: "M├®trique introuvable ou acc├¿s refus├®" };
+    if (!current) return { ok: false, error: "Métrique introuvable ou accès refusé" };
 
     const changesValue =
       (data.valueNum !== undefined && Number(data.valueNum) !== Number(current.value_num)) ||
@@ -497,7 +497,7 @@ export const reviewStudioMetric = createServerFn({ method: "POST" })
     };
 
     if (changesValue) {
-      // La valeur d'origine n'est captur├®e qu'├á la premi├¿re correction.
+      // La valeur d'origine n'est capturée qu'à la première correction.
       if (current.original_value_num === null && current.original_value_text === null) {
         patch['original_value_num'] = current.value_num;
         patch['original_value_text'] = current.value_text;
@@ -516,7 +516,7 @@ export const reviewStudioMetric = createServerFn({ method: "POST" })
       .select("*")
       .maybeSingle();
 
-    if (error || !row) return { ok: false, error: "Revue refus├®e (droits insuffisants)" };
+    if (error || !row) return { ok: false, error: "Revue refusée (droits insuffisants)" };
 
     await supabase.from("audit_logs").insert({
       client_id: row.client_id,

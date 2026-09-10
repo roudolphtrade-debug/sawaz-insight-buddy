@@ -3,9 +3,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Pass 3F ÔÇö Pilotage de la publication c├┤t├® Results Studio.
- * Lecture de l'├®tat de publication, historique, rotation et r├®vocation du lien.
- * La rotation et la r├®vocation sont r├®serv├®es au r├┤le owner, comme la publication.
+ * Pass 3F — Pilotage de la publication côté Results Studio.
+ * Lecture de l'état de publication, historique, rotation et révocation du lien.
+ * La rotation et la révocation sont réservées au rôle owner, comme la publication.
  */
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -52,7 +52,7 @@ async function guard(supabase: any, userId: string, reviewId: string) {
     .select("id, client_id")
     .eq("id", reviewId)
     .maybeSingle();
-  if (!review) return { error: "Review introuvable ou acc├¿s refus├®" as const };
+  if (!review) return { error: "Review introuvable ou accès refusé" as const };
 
   const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
   const list = (roles ?? []).map((r: { role: string }) => r.role);
@@ -156,7 +156,7 @@ export const getPublicationState = createServerFn({ method: "POST" })
     };
   });
 
-/** Rotation du lien : r├®voque l'ancien secret et ses sessions, en ├®met un nouveau. */
+/** Rotation du lien : révoque l'ancien secret et ses sessions, en émet un nouveau. */
 export const regenerateReviewLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { reviewId: string }) => ({ reviewId: String(input.reviewId ?? "") }))
@@ -164,7 +164,7 @@ export const regenerateReviewLink = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const g = await guard(supabase, userId, data.reviewId);
     if ("error" in g) return { ok: false, error: g.error };
-    if (g.role !== "owner") return { ok: false, error: "Rotation r├®serv├®e au r├┤le owner" };
+    if (g.role !== "owner") return { ok: false, error: "Rotation réservée au rôle owner" };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: published } = await supabaseAdmin
@@ -174,7 +174,7 @@ export const regenerateReviewLink = createServerFn({ method: "POST" })
       .eq("status", "published")
       .maybeSingle();
 
-    if (!published) return { ok: false, error: "Aucune version publi├®e" };
+    if (!published) return { ok: false, error: "Aucune version publiée" };
 
     const link = await import("@/lib/review-access/review-link.server");
     try {
@@ -190,7 +190,7 @@ export const regenerateReviewLink = createServerFn({ method: "POST" })
     }
   });
 
-/** R├®voque imm├®diatement l'acc├¿s client (lien + sessions ouvertes). */
+/** Révoque immédiatement l'accès client (lien + sessions ouvertes). */
 export const revokeReviewAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { reviewId: string }) => ({ reviewId: String(input.reviewId ?? "") }))
@@ -198,7 +198,7 @@ export const revokeReviewAccess = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const g = await guard(supabase, userId, data.reviewId);
     if ("error" in g) return { ok: false, error: g.error };
-    if (g.role !== "owner") return { ok: false, error: "R├®vocation r├®serv├®e au r├┤le owner" };
+    if (g.role !== "owner") return { ok: false, error: "Révocation réservée au rôle owner" };
 
     const link = await import("@/lib/review-access/review-link.server");
     await link.revokeReviewLinks(data.reviewId, userId);

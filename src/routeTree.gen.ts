@@ -22,6 +22,7 @@ import { Route as CollecteValidationRouteImport } from './routes/collecte.valida
 import { Route as CollecteYoutubeRouteImport } from './routes/collecte.youtube'
 import { Route as AuthenticatedStudioIndexRouteImport } from './routes/_authenticated/studio.index'
 import { Route as AuthenticatedStudioClientIdRouteImport } from './routes/_authenticated/studio.$clientId'
+import { Route as AuthenticatedStudioClientIdIndexRouteImport } from './routes/_authenticated/studio.$clientId.index'
 import { Route as AuthenticatedStudioClientIdReviewReviewIdRouteImport } from './routes/_authenticated/studio.$clientId.review.$reviewId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -90,6 +91,12 @@ const AuthenticatedStudioClientIdRoute =
     path: '/studio/$clientId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedStudioClientIdIndexRoute =
+  AuthenticatedStudioClientIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedStudioClientIdRoute,
+  } as any)
 const AuthenticatedStudioClientIdReviewReviewIdRoute =
   AuthenticatedStudioClientIdReviewReviewIdRouteImport.update({
     id: '/review/$reviewId',
@@ -110,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/collecte/': typeof CollecteIndexRoute
   '/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
   '/studio/': typeof AuthenticatedStudioIndexRoute
+  '/studio/$clientId/': typeof AuthenticatedStudioClientIdIndexRoute
   '/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
 }
 export interface FileRoutesByTo {
@@ -122,8 +130,8 @@ export interface FileRoutesByTo {
   '/collecte/validation': typeof CollecteValidationRoute
   '/collecte/youtube': typeof CollecteYoutubeRoute
   '/collecte': typeof CollecteIndexRoute
-  '/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
   '/studio': typeof AuthenticatedStudioIndexRoute
+  '/studio/$clientId': typeof AuthenticatedStudioClientIdIndexRoute
   '/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
 }
 export interface FileRoutesById {
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/collecte/': typeof CollecteIndexRoute
   '/_authenticated/studio/$clientId': typeof AuthenticatedStudioClientIdRouteWithChildren
   '/_authenticated/studio/': typeof AuthenticatedStudioIndexRoute
+  '/_authenticated/studio/$clientId/': typeof AuthenticatedStudioClientIdIndexRoute
   '/_authenticated/studio/$clientId/review/$reviewId': typeof AuthenticatedStudioClientIdReviewReviewIdRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/collecte/'
     | '/studio/$clientId'
     | '/studio/'
+    | '/studio/$clientId/'
     | '/studio/$clientId/review/$reviewId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -170,8 +180,8 @@ export interface FileRouteTypes {
     | '/collecte/validation'
     | '/collecte/youtube'
     | '/collecte'
-    | '/studio/$clientId'
     | '/studio'
+    | '/studio/$clientId'
     | '/studio/$clientId/review/$reviewId'
   id:
     | '__root__'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/collecte/'
     | '/_authenticated/studio/$clientId'
     | '/_authenticated/studio/'
+    | '/_authenticated/studio/$clientId/'
     | '/_authenticated/studio/$clientId/review/$reviewId'
   fileRoutesById: FileRoutesById
 }
@@ -293,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStudioClientIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/studio/$clientId/': {
+      id: '/_authenticated/studio/$clientId/'
+      path: '/'
+      fullPath: '/studio/$clientId/'
+      preLoaderRoute: typeof AuthenticatedStudioClientIdIndexRouteImport
+      parentRoute: typeof AuthenticatedStudioClientIdRoute
+    }
     '/_authenticated/studio/$clientId/review/$reviewId': {
       id: '/_authenticated/studio/$clientId/review/$reviewId'
       path: '/review/$reviewId'
@@ -304,11 +322,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedStudioClientIdRouteChildren {
+  AuthenticatedStudioClientIdIndexRoute: typeof AuthenticatedStudioClientIdIndexRoute
   AuthenticatedStudioClientIdReviewReviewIdRoute: typeof AuthenticatedStudioClientIdReviewReviewIdRoute
 }
 
 const AuthenticatedStudioClientIdRouteChildren: AuthenticatedStudioClientIdRouteChildren =
   {
+    AuthenticatedStudioClientIdIndexRoute:
+      AuthenticatedStudioClientIdIndexRoute,
     AuthenticatedStudioClientIdReviewReviewIdRoute:
       AuthenticatedStudioClientIdReviewReviewIdRoute,
   }

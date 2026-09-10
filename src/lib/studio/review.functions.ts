@@ -11,11 +11,11 @@ import {
 } from "@/lib/studio/review-content";
 
 /**
- * Pass 3E ÔÇö Sawaz Strategic Review Workflow.
- * Toutes les ├®critures passent par la RLS (can_write_client / is_owner) et par
- * les triggers d'immutabilit├® : une version publi├®e n'est plus modifiable, la
- * publication est r├®serv├®e au r├┤le owner.
- * Garde-fou c├┤t├® serveur : seules les m├®triques `valide` et les analyses
+ * Pass 3E — Sawaz Strategic Review Workflow.
+ * Toutes les écritures passent par la RLS (can_write_client / is_owner) et par
+ * les triggers d'immutabilité : une version publiée n'est plus modifiable, la
+ * publication est réservée au rôle owner.
+ * Garde-fou côté serveur : seules les métriques `valide` et les analyses
  * non-internes (jamais une note) peuvent alimenter le contenu client.
  */
 
@@ -190,7 +190,7 @@ export const listClientReviews = createServerFn({ method: "POST" })
     };
   });
 
-/** Cr├®e une Review (draft) depuis une collecte/soumission + sa version 1. */
+/** Crée une Review (draft) depuis une collecte/soumission + sa version 1. */
 export const createReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -216,7 +216,7 @@ export const createReview = createServerFn({ method: "POST" })
       .select("id")
       .maybeSingle();
 
-    if (error || !review) return { ok: false, error: "Cr├®ation refus├®e (droits insuffisants)" };
+    if (error || !review) return { ok: false, error: "Création refusée (droits insuffisants)" };
 
     const content = emptyReviewContent(
       data.title?.trim() || "Strategic Review",
@@ -237,7 +237,7 @@ export const createReview = createServerFn({ method: "POST" })
       .select("id")
       .maybeSingle();
 
-    if (vErr || !version) return { ok: false, error: "Cr├®ation de la version 1 refus├®e" };
+    if (vErr || !version) return { ok: false, error: "Création de la version 1 refusée" };
 
     await supabase.from("reviews").update({ current_version_id: version.id }).eq("id", review.id);
     await supabase.from("audit_logs").insert({
@@ -264,7 +264,7 @@ export const getReviewWorkspace = createServerFn({ method: "POST" })
       .select("*")
       .eq("id", data.reviewId)
       .maybeSingle();
-    if (!review) return { ok: false, error: "Review introuvable ou acc├¿s refus├®" };
+    if (!review) return { ok: false, error: "Review introuvable ou accès refusé" };
 
     const [versionsRes, projectRes, clientRes] = await Promise.all([
       supabase.from("review_versions").select("*").eq("review_id", review.id),
@@ -315,8 +315,8 @@ export const getReviewWorkspace = createServerFn({ method: "POST" })
 
 /**
  * Enregistre le contenu d'une version.
- * Si la version cibl├®e est publi├®e/archiv├®e, une nouvelle version version_no + 1
- * est cr├®├®e en draft : une version publi├®e reste immuable.
+ * Si la version ciblée est publiée/archivée, une nouvelle version version_no + 1
+ * est créée en draft : une version publiée reste immuable.
  */
 export const saveReviewVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -332,7 +332,7 @@ export const saveReviewVersion = createServerFn({ method: "POST" })
         .select("*")
         .eq("id", data.versionId)
         .maybeSingle();
-      if (!current) return { ok: false, error: "Version introuvable ou acc├¿s refus├®" };
+      if (!current) return { ok: false, error: "Version introuvable ou accès refusé" };
 
       const { eligibleMetrics, eligibleAnalyses } = await loadEligible(
         supabase,
@@ -368,7 +368,7 @@ export const saveReviewVersion = createServerFn({ method: "POST" })
           .select("id")
           .maybeSingle();
 
-        if (error || !created) return { ok: false, error: "Nouvelle version refus├®e" };
+        if (error || !created) return { ok: false, error: "Nouvelle version refusée" };
 
         await supabase.from("audit_logs").insert({
           client_id: current.client_id,
@@ -388,7 +388,7 @@ export const saveReviewVersion = createServerFn({ method: "POST" })
         .update({ content: content as never, charts: charts as never })
         .eq("id", current.id);
 
-      if (error) return { ok: false, error: "Enregistrement refus├® (droits insuffisants)" };
+      if (error) return { ok: false, error: "Enregistrement refusé (droits insuffisants)" };
 
       await supabase.from("audit_logs").insert({
         client_id: current.client_id,
@@ -411,7 +411,7 @@ const ALLOWED: Record<string, string[]> = {
   archived: [],
 };
 
-/** Workflow Draft ÔåÆ In Review ÔåÆ Approved ÔåÆ Published (publication : owner uniquement). */
+/** Workflow Draft → In Review → Approved → Published (publication : owner uniquement). */
 export const transitionReviewVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { versionId: string; to: ReviewStatus }) => input)
@@ -428,13 +428,13 @@ export const transitionReviewVersion = createServerFn({ method: "POST" })
       .select("*")
       .eq("id", data.versionId)
       .maybeSingle();
-    if (!version) return { ok: false, error: "Version introuvable ou acc├¿s refus├®" };
+    if (!version) return { ok: false, error: "Version introuvable ou accès refusé" };
 
     if (!(ALLOWED[version.status] ?? []).includes(data.to)) {
-      return { ok: false, error: `Transition ${version.status} ÔåÆ ${data.to} non autoris├®e` };
+      return { ok: false, error: `Transition ${version.status} → ${data.to} non autorisée` };
     }
     if ((data.to === "published" || data.to === "archived") && role !== "owner") {
-      return { ok: false, error: "Publication r├®serv├®e au r├┤le owner" };
+      return { ok: false, error: "Publication réservée au rôle owner" };
     }
 
     const patch: Record<string, unknown> = { status: data.to };
@@ -451,7 +451,7 @@ export const transitionReviewVersion = createServerFn({ method: "POST" })
       .select("*")
       .maybeSingle();
 
-    if (error || !updated) return { ok: false, error: "Transition refus├®e (droits insuffisants)" };
+    if (error || !updated) return { ok: false, error: "Transition refusée (droits insuffisants)" };
 
     const reviewPatch: Record<string, unknown> = { status: data.to, current_version_id: version.id };
     if (data.to === "published") reviewPatch['published_at'] = updated.published_at;
@@ -467,7 +467,7 @@ export const transitionReviewVersion = createServerFn({ method: "POST" })
       metadata: { from: version.status, to: data.to, version_no: version.version_no } as never,
     });
 
-    // Pass 3F ÔÇö la publication ouvre l'acc├¿s client : lien s├®curis├® + notification idempotente.
+    // Pass 3F — la publication ouvre l'accès client : lien sécurisé + notification idempotente.
     let access: { url: string; notified: string[] } | null = null;
     if (data.to === "published") {
       const link = await import("@/lib/review-access/review-link.server");
