@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight } from "lucide-react";
-import { useEffect } from "react";
+import { ArrowRight, Building2, FileStack, FolderKanban, Inbox, Layers3 } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 
+import { LftcLogo } from "@/components/brand/Logos";
 import { Panel, StudioShell } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { listStudioClients, studioBootstrap } from "@/lib/studio/studio.functions";
@@ -50,12 +51,15 @@ function StudioIndex() {
     return undefined;
   }, [data, refetch]);
 
+  const clients = data?.ok ? data.data.clients.filter((client) => !client.isDemo) : [];
+
   return (
     <StudioShell
+      className="studio-home"
       title="Dossiers clients"
-      subtitle="Données réelles issues des collectes. L'interface reste identique quel que soit le client."
+      subtitle="Pilotez les projets, collectes et restitutions de chaque client depuis un espace unique."
     >
-      {isLoading ? <Panel>Chargement des dossiersÔÇª</Panel> : null}
+      {isLoading ? <Panel>Chargement des dossiers…</Panel> : null}
 
       {data && !data.ok ? (
         <Panel>
@@ -63,7 +67,7 @@ function StudioIndex() {
         </Panel>
       ) : null}
 
-      {data?.ok && data.data.clients.length === 0 ? (
+      {data?.ok && clients.length === 0 ? (
         <Panel title="Aucun client accessible">
           <p className="text-sm text-muted-foreground">
             Ton compte n'a pas encore de client rattaché, ou aucun client n'existe. Un owner Sawaz
@@ -72,59 +76,132 @@ function StudioIndex() {
         </Panel>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {data?.ok
-          ? data.data.clients.map((client) => (
-              <Link
-                key={client.id}
-                to="/studio/$clientId"
-                params={{ clientId: client.slug }}
-                className="surface-panel group block p-5 transition hover:border-sawaz/40"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-foreground">
-                      {client.name}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">{client.sector ?? "—"}</p>
-                  </div>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    {client.isDemo ? <StatusBadge tone="neutral">Démo</StatusBadge> : null}
-                    <StatusBadge tone={client.reviewPublished ? "gold" : "sawaz"}>
-                      {client.reviewPublished ? "Review publiée" : "Review non publiée"}
-                    </StatusBadge>
-                  </div>
-                </div>
-
-                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                  <Stat label="Projets" value={client.projects} />
-                  <Stat label="Collectes" value={client.collections} />
-                  <Stat label="Soumises" value={`${client.submitted}/${client.submissions}`} />
-                  <Stat label="Fichiers" value={client.files} />
-                </dl>
-
-                <p className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-sawaz">
-                  Ouvrir le dossier
-                  <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
-                </p>
-                {client.metricsToReview > 0 ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {client.metricsToReview} métrique(s) à vérifier
-                  </p>
-                ) : null}
-              </Link>
-            ))
-          : null}
-      </div>
+      {clients.length > 0 ? (
+        <section className="studio-client-table overflow-hidden rounded-2xl border border-border shadow-elevated">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border bg-surface-raised/80">
+                  <HeaderCell className="min-w-72">Client</HeaderCell>
+                  <HeaderCell icon={<FolderKanban />}>Projets</HeaderCell>
+                  <HeaderCell icon={<Layers3 />}>Collectes</HeaderCell>
+                  <HeaderCell icon={<Inbox />}>Soumissions</HeaderCell>
+                  <HeaderCell icon={<FileStack />}>Fichiers</HeaderCell>
+                  <HeaderCell>Restitution</HeaderCell>
+                  <HeaderCell className="text-right">Action</HeaderCell>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((client) => (
+                  <tr
+                    key={client.id}
+                    className="group border-b border-border transition last:border-b-0 hover:bg-sawaz/[0.055]"
+                  >
+                    <td className="px-5 py-5">
+                      <div className="flex items-center gap-4">
+                        <ClientLogo name={client.name} slug={client.slug} />
+                        <div className="min-w-0">
+                          <p className="truncate font-display text-base font-extrabold text-foreground">
+                            {client.name}
+                          </p>
+                          <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                            {client.sector ?? "Secteur non renseigné"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <MetricCell value={client.projects} />
+                    <MetricCell value={client.collections} />
+                    <td className="px-4 py-5">
+                      <p className="font-display text-base font-extrabold text-foreground">
+                        {client.submitted}
+                        <span className="ml-1 font-sans text-xs font-medium text-muted-foreground">
+                          / {client.submissions}
+                        </span>
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">finalisées</p>
+                    </td>
+                    <MetricCell value={client.files} />
+                    <td className="px-4 py-5">
+                      <StatusBadge tone={client.reviewPublished ? "gold" : "sawaz"}>
+                        {client.reviewPublished ? "Restitution publiée" : "Restitution non publiée"}
+                      </StatusBadge>
+                      {client.metricsToReview > 0 ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {client.metricsToReview} métrique(s) à vérifier
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-5 py-5 text-right">
+                      <Link
+                        to="/studio/$clientId"
+                        params={{ clientId: client.slug }}
+                        className="inline-flex items-center gap-2 rounded-xl bg-sawaz px-4 py-2.5 text-sm font-extrabold whitespace-nowrap text-sawaz-foreground shadow-[0_10px_28px_-14px_var(--color-sawaz)] transition hover:-translate-y-0.5 hover:bg-sawaz/90 focus-visible:outline-sawaz"
+                      >
+                        Ouvrir le dossier
+                        <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between gap-4 border-t border-border bg-surface-raised/35 px-5 py-3 text-xs text-muted-foreground">
+            <span>{clients.length} dossier(s) client</span>
+            <span>Données actualisées depuis les collectes</span>
+          </div>
+        </section>
+      ) : null}
     </StudioShell>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function HeaderCell({
+  children,
+  icon,
+  className,
+}: {
+  children: ReactNode;
+  icon?: ReactNode;
+  className?: string;
+}) {
   return (
-    <div>
-      <dt className="text-eyebrow text-muted-foreground">{label}</dt>
-      <dd className="font-display text-base font-bold text-foreground">{value}</dd>
-    </div>
+    <th
+      scope="col"
+      className={`px-4 py-4 text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase ${className ?? ""}`}
+    >
+      <span className="inline-flex items-center gap-2 [&_svg]:size-3.5 [&_svg]:text-sawaz">
+        {icon}
+        {children}
+      </span>
+    </th>
+  );
+}
+
+function MetricCell({ value }: { value: number }) {
+  return (
+    <td className="px-4 py-5">
+      <span className="font-display text-lg font-extrabold text-foreground">{value}</span>
+    </td>
+  );
+}
+
+function ClientLogo({ name, slug }: { name: string; slug: string }) {
+  const isLftc = slug.toLowerCase().includes("lftc") || name.toLowerCase().includes("lftc");
+
+  if (isLftc) {
+    return (
+      <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-sawaz/20 bg-white px-2.5 shadow-sm">
+        <LftcLogo className="[&>span]:hidden [&_img]:h-auto [&_img]:max-h-8 [&_img]:max-w-full" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-sawaz/25 bg-sawaz/10 text-sawaz">
+      <Building2 className="size-6" aria-hidden="true" />
+      <span className="sr-only">Logo de {name}</span>
+    </span>
   );
 }

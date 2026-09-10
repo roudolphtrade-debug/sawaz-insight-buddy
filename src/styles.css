@@ -18,12 +18,17 @@
   --radius-4xl: calc(var(--radius) + 16px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-body: var(--body);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-sawaz: var(--sawaz);
+  --color-sawaz-foreground: var(--sawaz-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -33,6 +38,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
@@ -40,6 +46,7 @@
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  --shadow-elevated: var(--shadow-elevated);
   --font-display: "Space Grotesk", sans-serif;
   --font-sans: "Inter", sans-serif;
 }
@@ -49,6 +56,9 @@
   /* Deep graphite night, tinted toward the logo's blue */
   --background: oklch(0.13 0.015 245);
   --foreground: oklch(0.96 0.008 225);
+  --body: oklch(0.84 0.018 230);
+  --surface: oklch(0.17 0.018 245);
+  --surface-raised: oklch(0.21 0.02 245);
   --card: oklch(0.17 0.018 245);
   --card-foreground: oklch(0.96 0.008 225);
   --popover: oklch(0.17 0.018 245);
@@ -56,6 +66,8 @@
   /* Logo cyan #2DAAE1 */
   --primary: oklch(0.705 0.131 232);
   --primary-foreground: oklch(0.12 0.015 245);
+  --sawaz: oklch(0.705 0.131 232);
+  --sawaz-foreground: oklch(0.12 0.015 245);
   --secondary: oklch(0.21 0.02 245);
   --secondary-foreground: oklch(0.96 0.008 225);
   --muted: oklch(0.21 0.02 245);
@@ -65,6 +77,7 @@
   --destructive: oklch(0.65 0.19 25);
   --destructive-foreground: oklch(0.97 0.005 230);
   --border: oklch(0.27 0.02 245);
+  --border-strong: oklch(0.34 0.025 245);
   --input: oklch(0.27 0.02 245);
   --ring: oklch(0.705 0.131 232);
   /* Signal palette */
@@ -72,6 +85,7 @@
   --good: oklch(0.75 0.13 165);
   --warn: oklch(0.77 0.14 75);
   --bad: oklch(0.7 0.17 20);
+  --shadow-elevated: 0 24px 60px -30px oklch(0 0 0 / 85%);
 }
 
 @layer base {
@@ -91,6 +105,19 @@
   border: 1px solid oklch(1 0 0 / 12%);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+}
+
+@utility text-eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+@utility surface-panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
 }
 
 @utility chrome-ring {
@@ -168,4 +195,37 @@
 
 @utility rise-late {
   animation: rise 0.8s cubic-bezier(0.32, 0.72, 0, 1) 0.12s both;
+}
+
+/* Accueil du Results Studio uniquement — identité numérique Sawaz. */
+.studio-home {
+  --background: #061426;
+  --foreground: #f3f8fc;
+  --body: #cbdbe8;
+  --surface: #0a1c31;
+  --surface-raised: #102842;
+  --card: #0a1c31;
+  --card-foreground: #f3f8fc;
+  --muted: #102842;
+  --muted-foreground: #91a9bc;
+  --border: color-mix(in oklab, var(--sawaz) 16%, transparent);
+  --border-strong: color-mix(in oklab, var(--sawaz) 28%, transparent);
+  background-image:
+    radial-gradient(
+      circle at 8% 0%,
+      color-mix(in oklab, var(--sawaz) 15%, transparent),
+      transparent 30rem
+    ),
+    linear-gradient(155deg, #061426 0%, #07182b 48%, #071322 100%);
+}
+
+.studio-home .studio-client-table {
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--surface) 94%, var(--sawaz)),
+    var(--surface) 58%
+  );
+  box-shadow:
+    0 24px 70px -36px color-mix(in oklab, var(--sawaz) 38%, transparent),
+    0 16px 44px -28px rgb(0 0 0 / 80%);
 }

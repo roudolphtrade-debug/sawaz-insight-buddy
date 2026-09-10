@@ -11,16 +11,18 @@ export function StudioShell({
   title,
   subtitle,
   actions,
+  className,
   children,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface/60">
+    <div className={cn("min-h-screen bg-background", className)}>
+      <header className="border-b border-border bg-surface/60 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link to="/studio" className="flex items-center gap-3">
             <img
@@ -36,12 +38,20 @@ export function StudioShell({
             </span>
           </Link>
 
-          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link to="/studio" className="hover:text-foreground">
-              Clients
+          <nav className="flex items-center gap-1 rounded-xl border border-border bg-surface-raised/65 p-1 text-sm text-muted-foreground">
+            <Link
+              to="/studio"
+              activeOptions={{ exact: true }}
+              activeProps={{ className: "bg-sawaz/15 text-sawaz" }}
+              className="rounded-lg px-3 py-2 font-semibold transition hover:bg-sawaz/10 hover:text-foreground"
+            >
+              Dossiers clients
             </Link>
-            <Link to="/collecte" className="hover:text-foreground">
-              Collecte
+            <Link
+              to="/collecte"
+              className="rounded-lg px-3 py-2 font-semibold transition hover:bg-sawaz/10 hover:text-foreground"
+            >
+              Collectes
             </Link>
           </nav>
         </div>
