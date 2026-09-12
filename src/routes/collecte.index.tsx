@@ -20,7 +20,8 @@ export const Route = createFileRoute("/collecte/")({
       { property: "og:title", content: "LFTC — Mettre des chiffres derrière les intuitions" },
       {
         property: "og:description",
-        content: "Première vague de données YouTube + Meta pour LFTC, accompagnée par Sawaz.",
+        content:
+          "Première vague de données YouTube + Meta pour LFTC, accompagnée par Sawaz Décodage.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -124,7 +125,7 @@ function IntroductionScreen() {
       <NavigationFooter
         previous={previous}
         next={next}
-        nextLabel="Commencer"
+        nextLabel="Commencer mon décodage"
         note="Tu ne trouves pas une donnée ? Ne perds pas de temps. Indique simplement qu'elle n'est pas disponible et continue."
       />
     </StepLayout>

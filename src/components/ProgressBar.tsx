@@ -10,7 +10,7 @@ export function ProgressBar({ current }: { current: StepId }) {
   const percent = ((currentIndex + 1) / STEPS.length) * 100;
 
   return (
-    <nav aria-label="Progression du diagnostic" className="w-full">
+    <nav aria-label="Progression du décodage" className="w-full">
       <div className="flex items-center justify-between gap-4">
         <p className="min-w-0 text-xs font-semibold text-muted-foreground">
           Étape {currentIndex + 1} sur {STEPS.length}

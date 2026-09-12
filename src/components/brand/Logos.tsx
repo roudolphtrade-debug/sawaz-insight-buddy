@@ -18,7 +18,7 @@ export function LftcLogo({ className }: { className?: string }) {
       />
       <span className="hidden min-w-0 leading-tight sm:block">
         <span className="block text-[0.6875rem] font-medium tracking-[0.14em] text-muted-foreground uppercase">
-          Client Intelligence
+          Décodage stratégique LFTC
         </span>
       </span>
     </span>

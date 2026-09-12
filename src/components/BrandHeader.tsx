@@ -1,11 +1,11 @@
 import { LftcLogo, SawazMark } from "@/components/brand/Logos";
 
 type BrandHeaderProps = {
-  /** Short context line, e.g. "Diagnostic digital · 2026". */
+  /** Short context line, e.g. "Sawaz Décodage". */
   context?: string;
 };
 
-export function BrandHeader({ context = "Diagnostic digital · 2026" }: BrandHeaderProps) {
+export function BrandHeader({ context = "Sawaz Décodage" }: BrandHeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3 sm:px-8 sm:py-4">

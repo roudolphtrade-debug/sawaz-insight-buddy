@@ -156,7 +156,7 @@ function ValidationScreen() {
           <NavigationFooter
             previous={previous}
             next={null}
-            nextLabel={sending ? "Envoi en cours…" : "Envoyer les éléments"}
+            nextLabel={sending ? "Transmission en cours…" : "Transmettre mes éléments"}
             onNext={() => void handleSubmit()}
             busy={sending}
             note={sending ? "Transmission sécurisée en cours…" : "Tes réponses sont enregistrées automatiquement."}
