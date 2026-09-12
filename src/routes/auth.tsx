@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 
-import logoAsset from "@/assets/logo-sawaz.png.asset.json";
+import { SawazMark } from "@/components/brand/Logos";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
@@ -52,7 +52,7 @@ function AuthPage() {
     <div className="grid min-h-screen place-items-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
-          <img src={logoAsset.url} alt="Sawaz" className="h-10 w-10 rounded-full bg-foreground/90 object-contain p-1" />
+          <SawazMark />
           <span className="leading-tight">
             <span className="block font-display text-sm font-extrabold text-foreground">
               Results Studio
