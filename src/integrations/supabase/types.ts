@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -24,7 +24,7 @@ export type Database = {
           id: string
           submission_id: string | null
           title: string | null
-          type: string
+          type: Database["public"]["Enums"]["analysis_type"]
           updated_at: string
           visibility: string
         }
@@ -37,7 +37,7 @@ export type Database = {
           id?: string
           submission_id?: string | null
           title?: string | null
-          type: string
+          type?: Database["public"]["Enums"]["analysis_type"]
           updated_at?: string
           visibility?: string
         }
@@ -50,11 +50,18 @@ export type Database = {
           id?: string
           submission_id?: string | null
           title?: string | null
-          type?: string
+          type?: Database["public"]["Enums"]["analysis_type"]
           updated_at?: string
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "analyses_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "analyses_client_id_fkey"
             columns: ["client_id"]
@@ -84,9 +91,11 @@ export type Database = {
           collection_id: string
           created_at: string
           id: string
+          is_optional: boolean
           not_found: boolean
           question_key: string
           submission_id: string
+          updated_at: string
           value: Json | null
         }
         Insert: {
@@ -94,9 +103,11 @@ export type Database = {
           collection_id: string
           created_at?: string
           id?: string
+          is_optional?: boolean
           not_found?: boolean
           question_key: string
           submission_id: string
+          updated_at?: string
           value?: Json | null
         }
         Update: {
@@ -104,9 +115,11 @@ export type Database = {
           collection_id?: string
           created_at?: string
           id?: string
+          is_optional?: boolean
           not_found?: boolean
           question_key?: string
           submission_id?: string
+          updated_at?: string
           value?: Json | null
         }
         Relationships: [
@@ -137,38 +150,38 @@ export type Database = {
         Row: {
           action: string
           actor_id: string | null
-          actor_type: string
+          actor_type: Database["public"]["Enums"]["actor_type"]
           client_id: string | null
           created_at: string
           entity_id: string | null
           entity_type: string | null
           id: string
           ip_hash: string | null
-          metadata: Json | null
+          metadata: Json
         }
         Insert: {
           action: string
           actor_id?: string | null
-          actor_type: string
+          actor_type: Database["public"]["Enums"]["actor_type"]
           client_id?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type?: string | null
           id?: string
           ip_hash?: string | null
-          metadata?: Json | null
+          metadata?: Json
         }
         Update: {
           action?: string
           actor_id?: string | null
-          actor_type?: string
+          actor_type?: Database["public"]["Enums"]["actor_type"]
           client_id?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type?: string | null
           id?: string
           ip_hash?: string | null
-          metadata?: Json | null
+          metadata?: Json
         }
         Relationships: [
           {
@@ -191,6 +204,7 @@ export type Database = {
           sector: string | null
           slug: string
           theme_tokens: Json
+          updated_at: string
         }
         Insert: {
           archived_at?: string | null
@@ -202,6 +216,7 @@ export type Database = {
           sector?: string | null
           slug: string
           theme_tokens?: Json
+          updated_at?: string
         }
         Update: {
           archived_at?: string | null
@@ -213,6 +228,7 @@ export type Database = {
           sector?: string | null
           slug?: string
           theme_tokens?: Json
+          updated_at?: string
         }
         Relationships: []
       }
@@ -220,23 +236,35 @@ export type Database = {
         Row: {
           client_id: string
           collection_id: string
-          contact_id: string | null
+          contact_id: string
           created_at: string
           id: string
+          notified_at: string | null
+          secure_link_id: string | null
+          status: Database["public"]["Enums"]["recipient_status"]
+          updated_at: string
         }
         Insert: {
           client_id: string
           collection_id: string
-          contact_id?: string | null
+          contact_id: string
           created_at?: string
           id?: string
+          notified_at?: string | null
+          secure_link_id?: string | null
+          status?: Database["public"]["Enums"]["recipient_status"]
+          updated_at?: string
         }
         Update: {
           client_id?: string
           collection_id?: string
-          contact_id?: string | null
+          contact_id?: string
           created_at?: string
           id?: string
+          notified_at?: string | null
+          secure_link_id?: string | null
+          status?: Database["public"]["Enums"]["recipient_status"]
+          updated_at?: string
         }
         Relationships: [
           {
@@ -260,32 +288,92 @@ export type Database = {
             referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "collection_recipients_secure_link_id_fkey"
+            columns: ["secure_link_id"]
+            isOneToOne: false
+            referencedRelation: "secure_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collection_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          id: string
+          published_at: string | null
+          schema: Json
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          schema?: Json
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          schema?: Json
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
         ]
       }
       collections: {
         Row: {
+          archived_at: string | null
           client_id: string
+          closed_at: string | null
           created_at: string
           id: string
           opened_at: string | null
-          project_id: string | null
-          status: string
+          project_id: string
+          status: Database["public"]["Enums"]["collection_status"]
+          template_id: string | null
+          template_version: number
+          updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           client_id: string
+          closed_at?: string | null
           created_at?: string
           id?: string
           opened_at?: string | null
-          project_id?: string | null
-          status?: string
+          project_id: string
+          status?: Database["public"]["Enums"]["collection_status"]
+          template_id?: string | null
+          template_version?: number
+          updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           client_id?: string
+          closed_at?: string | null
           created_at?: string
           id?: string
           opened_at?: string | null
-          project_id?: string | null
-          status?: string
+          project_id?: string
+          status?: Database["public"]["Enums"]["collection_status"]
+          template_id?: string | null
+          template_version?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -302,6 +390,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "collections_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "collection_templates"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contacts: {
@@ -313,6 +408,8 @@ export type Database = {
           id: string
           is_primary: boolean
           name: string
+          role_label: string | null
+          updated_at: string
         }
         Insert: {
           archived_at?: string | null
@@ -322,6 +419,8 @@ export type Database = {
           id?: string
           is_primary?: boolean
           name: string
+          role_label?: string | null
+          updated_at?: string
         }
         Update: {
           archived_at?: string | null
@@ -331,6 +430,8 @@ export type Database = {
           id?: string
           is_primary?: boolean
           name?: string
+          role_label?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -345,10 +446,12 @@ export type Database = {
       extracted_metrics: {
         Row: {
           client_id: string
+          collection_id: string
           confidence: number | null
           corrected_at: string | null
           corrected_by: string | null
           created_at: string
+          extracted_at: string
           id: string
           metric_key: string
           original_value_num: number | null
@@ -356,13 +459,13 @@ export type Database = {
           period_end: string | null
           period_start: string | null
           platform: string | null
-          provenance: string
+          provenance: Database["public"]["Enums"]["metric_provenance"]
           review_note: string | null
-          review_status: string
+          review_status: Database["public"]["Enums"]["metric_review_status"]
           reviewed_at: string | null
           reviewed_by: string | null
           source_file_id: string | null
-          submission_id: string | null
+          submission_id: string
           unit: string | null
           updated_at: string
           value_num: number | null
@@ -370,10 +473,12 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          collection_id: string
           confidence?: number | null
           corrected_at?: string | null
           corrected_by?: string | null
           created_at?: string
+          extracted_at?: string
           id?: string
           metric_key: string
           original_value_num?: number | null
@@ -381,13 +486,13 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           platform?: string | null
-          provenance?: string
+          provenance?: Database["public"]["Enums"]["metric_provenance"]
           review_note?: string | null
-          review_status?: string
+          review_status?: Database["public"]["Enums"]["metric_review_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_file_id?: string | null
-          submission_id?: string | null
+          submission_id: string
           unit?: string | null
           updated_at?: string
           value_num?: number | null
@@ -395,10 +500,12 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          collection_id?: string
           confidence?: number | null
           corrected_at?: string | null
           corrected_by?: string | null
           created_at?: string
+          extracted_at?: string
           id?: string
           metric_key?: string
           original_value_num?: number | null
@@ -406,13 +513,13 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           platform?: string | null
-          provenance?: string
+          provenance?: Database["public"]["Enums"]["metric_provenance"]
           review_note?: string | null
-          review_status?: string
+          review_status?: Database["public"]["Enums"]["metric_review_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_file_id?: string | null
-          submission_id?: string | null
+          submission_id?: string
           unit?: string | null
           updated_at?: string
           value_num?: number | null
@@ -424,6 +531,27 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_metrics_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_metrics_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_metrics_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -444,42 +572,51 @@ export type Database = {
       }
       files: {
         Row: {
+          checksum: string | null
           client_id: string
           collection_id: string
+          created_at: string
           id: string
           mime: string | null
           original_name: string
-          scan_status: string
+          scan_status: Database["public"]["Enums"]["file_scan_status"]
           size_bytes: number | null
           slot_key: string
           storage_path: string
-          submission_id: string
+          submission_id: string | null
+          updated_at: string
           uploaded_at: string
         }
         Insert: {
+          checksum?: string | null
           client_id: string
           collection_id: string
+          created_at?: string
           id?: string
           mime?: string | null
           original_name: string
-          scan_status?: string
+          scan_status?: Database["public"]["Enums"]["file_scan_status"]
           size_bytes?: number | null
           slot_key: string
           storage_path: string
-          submission_id: string
+          submission_id?: string | null
+          updated_at?: string
           uploaded_at?: string
         }
         Update: {
+          checksum?: string | null
           client_id?: string
           collection_id?: string
+          created_at?: string
           id?: string
           mime?: string | null
           original_name?: string
-          scan_status?: string
+          scan_status?: Database["public"]["Enums"]["file_scan_status"]
           size_bytes?: number | null
           slot_key?: string
           storage_path?: string
-          submission_id?: string
+          submission_id?: string | null
+          updated_at?: string
           uploaded_at?: string
         }
         Relationships: [
@@ -558,50 +695,53 @@ export type Database = {
         Row: {
           attempts: number
           channel: string
-          client_id: string | null
+          client_id: string
           created_at: string
           id: string
-          idempotency_key: string | null
+          idempotency_key: string
           payload: Json
           recipient: string
           related_id: string | null
           related_type: string | null
           review_version_id: string | null
           sent_at: string | null
-          status: string
+          status: Database["public"]["Enums"]["notification_status"]
           type: string
+          updated_at: string
         }
         Insert: {
           attempts?: number
           channel?: string
-          client_id?: string | null
+          client_id: string
           created_at?: string
           id?: string
-          idempotency_key?: string | null
+          idempotency_key: string
           payload?: Json
           recipient: string
           related_id?: string | null
           related_type?: string | null
           review_version_id?: string | null
           sent_at?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["notification_status"]
           type: string
+          updated_at?: string
         }
         Update: {
           attempts?: number
           channel?: string
-          client_id?: string | null
+          client_id?: string
           created_at?: string
           id?: string
-          idempotency_key?: string | null
+          idempotency_key?: string
           payload?: Json
           recipient?: string
           related_id?: string | null
           related_type?: string | null
           review_version_id?: string | null
           sent_at?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["notification_status"]
           type?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -622,28 +762,34 @@ export type Database = {
       }
       projects: {
         Row: {
+          archived_at: string | null
           client_id: string
           created_at: string
           id: string
           name: string
           period_label: string | null
           status: string
+          updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           client_id: string
           created_at?: string
           id?: string
           name: string
           period_label?: string | null
           status?: string
+          updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           client_id?: string
           created_at?: string
           id?: string
           name?: string
           period_label?: string | null
           status?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -654,6 +800,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_limits: {
+        Row: {
+          bucket: string
+          created_at: string
+          hits: number
+          id: string
+          subject_hash: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          hits?: number
+          id?: string
+          subject_hash: string
+          window_start: string
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          hits?: number
+          id?: string
+          subject_hash?: string
+          window_start?: string
+        }
+        Relationships: []
       }
       review_versions: {
         Row: {
@@ -667,7 +840,7 @@ export type Database = {
           id: string
           published_at: string | null
           review_id: string
-          status: string
+          status: Database["public"]["Enums"]["review_status"]
           updated_at: string
           version_no: number
         }
@@ -682,7 +855,7 @@ export type Database = {
           id?: string
           published_at?: string | null
           review_id: string
-          status?: string
+          status?: Database["public"]["Enums"]["review_status"]
           updated_at?: string
           version_no: number
         }
@@ -697,16 +870,30 @@ export type Database = {
           id?: string
           published_at?: string | null
           review_id?: string
-          status?: string
+          status?: Database["public"]["Enums"]["review_status"]
           updated_at?: string
           version_no?: number
         }
         Relationships: [
           {
+            foreignKeyName: "review_versions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "review_versions_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -720,36 +907,39 @@ export type Database = {
       }
       reviews: {
         Row: {
+          archived_at: string | null
           client_id: string
           collection_id: string | null
           created_at: string
           current_version_id: string | null
           id: string
-          project_id: string | null
+          project_id: string
           published_at: string | null
-          status: string
+          status: Database["public"]["Enums"]["review_status"]
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           client_id: string
           collection_id?: string | null
           created_at?: string
           current_version_id?: string | null
           id?: string
-          project_id?: string | null
+          project_id: string
           published_at?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["review_status"]
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           client_id?: string
           collection_id?: string | null
           created_at?: string
           current_version_id?: string | null
           id?: string
-          project_id?: string | null
+          project_id?: string
           published_at?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["review_status"]
           updated_at?: string
         }
         Relationships: [
@@ -765,6 +955,13 @@ export type Database = {
             columns: ["collection_id"]
             isOneToOne: false
             referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_current_version_fk"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "review_versions"
             referencedColumns: ["id"]
           },
           {
@@ -786,9 +983,10 @@ export type Database = {
           last_used_at: string | null
           max_uses: number
           revoked_at: string | null
-          scope: string
+          scope: Database["public"]["Enums"]["secure_link_scope"]
           target_id: string
           token_hash: string
+          updated_at: string
           use_count: number
         }
         Insert: {
@@ -800,9 +998,10 @@ export type Database = {
           last_used_at?: string | null
           max_uses?: number
           revoked_at?: string | null
-          scope: string
+          scope: Database["public"]["Enums"]["secure_link_scope"]
           target_id: string
           token_hash: string
+          updated_at?: string
           use_count?: number
         }
         Update: {
@@ -814,9 +1013,10 @@ export type Database = {
           last_used_at?: string | null
           max_uses?: number
           revoked_at?: string | null
-          scope?: string
+          scope?: Database["public"]["Enums"]["secure_link_scope"]
           target_id?: string
           token_hash?: string
+          updated_at?: string
           use_count?: number
         }
         Relationships: [
@@ -825,6 +1025,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secure_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -836,7 +1043,7 @@ export type Database = {
           created_at: string
           id: string
           snapshot: Json | null
-          status: string
+          status: Database["public"]["Enums"]["submission_status"]
           submitted_at: string | null
           submitted_by_contact_id: string | null
           submitted_by_link_id: string | null
@@ -848,7 +1055,7 @@ export type Database = {
           created_at?: string
           id?: string
           snapshot?: Json | null
-          status?: string
+          status?: Database["public"]["Enums"]["submission_status"]
           submitted_at?: string | null
           submitted_by_contact_id?: string | null
           submitted_by_link_id?: string | null
@@ -860,7 +1067,7 @@ export type Database = {
           created_at?: string
           id?: string
           snapshot?: Json | null
-          status?: string
+          status?: Database["public"]["Enums"]["submission_status"]
           submitted_at?: string | null
           submitted_by_contact_id?: string | null
           submitted_by_link_id?: string | null
@@ -882,33 +1089,92 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "submissions_link_fk"
+            columns: ["submitted_by_link_id"]
+            isOneToOne: false
+            referencedRelation: "secure_links"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "submissions_submitted_by_contact_id_fkey"
             columns: ["submitted_by_contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      team_invites: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          email: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "submissions_submitted_by_link_id_fkey"
-            columns: ["submitted_by_link_id"]
+            foreignKeyName: "team_invites_claimed_by_fkey"
+            columns: ["claimed_by"]
             isOneToOne: false
-            referencedRelation: "secure_links"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
+      user_clients: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
+          created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
@@ -921,18 +1187,24 @@ export type Database = {
           email: string
           id: string
           is_active: boolean
+          name: string | null
+          updated_at: string
         }
         Insert: {
           created_at?: string
           email: string
           id: string
           is_active?: boolean
+          name?: string | null
+          updated_at?: string
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
           is_active?: boolean
+          name?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -941,7 +1213,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_write: { Args: { _user_id: string }; Returns: boolean }
+      can_write: { Args: never; Returns: boolean }
+      can_write_client: { Args: { _client_id: string }; Returns: boolean }
+      claim_team_access: { Args: never; Returns: string }
+      consume_rate_limit: {
+        Args: {
+          _bucket: string
+          _limit: number
+          _subject: string
+          _window_seconds: number
+        }
+        Returns: boolean
+      }
+      erase_client_data: {
+        Args: { _client_id: string; _drop_client?: boolean }
+        Returns: Json
+      }
+      has_client_access: { Args: { _client_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -949,10 +1237,35 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_owner: { Args: never; Returns: boolean }
+      is_team_member: { Args: never; Returns: boolean }
+      purge_audit_logs: { Args: { _keep_days?: number }; Returns: number }
+      purge_expired_sessions: { Args: { _keep_days?: number }; Returns: number }
+      purge_rate_limits: { Args: { _keep_hours?: number }; Returns: number }
     }
     Enums: {
+      actor_type: "user" | "link" | "system"
+      analysis_type: "constat" | "hypothese" | "recommandation" | "note"
       app_role: "owner" | "analyst" | "viewer"
+      collection_status:
+        | "draft"
+        | "open"
+        | "partially_submitted"
+        | "submitted"
+        | "closed"
+      file_scan_status: "pending" | "clean" | "rejected"
+      metric_provenance: "manual" | "csv" | "capture_ocr" | "derived"
+      metric_review_status: "a_verifier" | "valide" | "rejete"
+      notification_status: "queued" | "sent" | "failed"
+      recipient_status: "pending" | "opened" | "submitted" | "bounced"
+      review_status:
+        | "draft"
+        | "in_review"
+        | "approved"
+        | "published"
+        | "archived"
+      secure_link_scope: "collection" | "review"
+      submission_status: "working" | "submitted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -968,12 +1281,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -997,11 +1310,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1022,11 +1335,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1047,11 +1360,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1064,11 +1377,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1080,7 +1393,30 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      actor_type: ["user", "link", "system"],
+      analysis_type: ["constat", "hypothese", "recommandation", "note"],
       app_role: ["owner", "analyst", "viewer"],
+      collection_status: [
+        "draft",
+        "open",
+        "partially_submitted",
+        "submitted",
+        "closed",
+      ],
+      file_scan_status: ["pending", "clean", "rejected"],
+      metric_provenance: ["manual", "csv", "capture_ocr", "derived"],
+      metric_review_status: ["a_verifier", "valide", "rejete"],
+      notification_status: ["queued", "sent", "failed"],
+      recipient_status: ["pending", "opened", "submitted", "bounced"],
+      review_status: [
+        "draft",
+        "in_review",
+        "approved",
+        "published",
+        "archived",
+      ],
+      secure_link_scope: ["collection", "review"],
+      submission_status: ["working", "submitted"],
     },
   },
 } as const
