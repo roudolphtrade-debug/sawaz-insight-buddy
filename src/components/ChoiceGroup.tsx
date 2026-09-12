@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CircleDot, ListChecks } from "lucide-react";
 
 import { ChoiceCard } from "@/components/ChoiceCard";
 import { cn } from "@/lib/utils";
@@ -12,18 +13,12 @@ export type Choice = {
 };
 
 function ChoiceMode({ multi }: { multi: boolean }) {
+  const Icon = multi ? ListChecks : CircleDot;
+
   return (
-    <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-      <span
-        className={cn(
-          "size-3 shrink-0 border border-border-strong",
-          multi ? "rounded-[3px]" : "rounded-full",
-        )}
-        aria-hidden="true"
-      />
-      <span>
-        {multi ? "Plusieurs réponses possibles" : "Une seule réponse"}
-      </span>
+    <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 text-xs font-bold tracking-wide text-foreground shadow-[0_8px_24px_-16px_var(--color-primary)]">
+      <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <span>{multi ? "Plusieurs réponses possibles" : "Une seule réponse"}</span>
     </div>
   );
 }

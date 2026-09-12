@@ -14,7 +14,7 @@ export function LftcLogo({ className }: { className?: string }) {
         alt="LFTC"
         width={1481}
         height={211}
-        className="h-10 w-auto object-contain sm:h-12"
+        className="h-7 w-auto object-contain sm:h-9"
       />
       <span className="hidden min-w-0 leading-tight sm:block">
         <span className="block text-[0.6875rem] font-medium tracking-[0.14em] text-muted-foreground uppercase">
@@ -33,7 +33,7 @@ export function SawazMark({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-lg bg-foreground/92 px-3 py-2",
+        "inline-flex items-center rounded-lg bg-white px-2.5 py-1.5 shadow-sm ring-1 ring-white/15",
         className,
       )}
     >
