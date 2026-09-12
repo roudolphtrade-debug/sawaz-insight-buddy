@@ -230,6 +230,8 @@ export function safeName(name: string) {
 
 import type { AnswerValue } from "./types";
 import type { RemoteFile, RemoteSnapshot } from "./remote-types";
+import { stateFromSnapshot } from "./snapshot";
+import { metaBlocker, youtubeBlocker } from "./status";
 
 export async function buildSnapshot(session: LinkSession): Promise<RemoteSnapshot> {
   const submission = await getOrCreateSubmission(session);
@@ -423,7 +425,12 @@ export async function removeFile(session: LinkSession, fileId: string) {
   return { ok: true as const, data: { deleted: true as const } };
 }
 
-/** Validation minimale conforme au questionnaire, puis passage atomique à `submitted`. */
+/**
+ * Applique côté serveur exactement les mêmes règles obligatoires que
+ * l'interface (`youtubeBlocker` / `metaBlocker` dans `./status`), puis
+ * passage atomique à `submitted`. Les deux validations partagent la même
+ * source pour ne jamais diverger.
+ */
 export async function submitCurrentSubmission(session: LinkSession) {
   await enforceRateLimit("submit", callerSubject(session.sessionId));
   const submission = await getOrCreateSubmission(session);
@@ -432,18 +439,13 @@ export async function submitCurrentSubmission(session: LinkSession) {
   }
 
   const snapshot = await buildSnapshot(session);
-  const missingFlags = Object.entries(snapshot.answers).filter(
-    ([key, value]) => value === true && (key.includes("missing") || key.includes("Impossible")),
-  );
+  const state = stateFromSnapshot(snapshot);
 
-  const problems: string[] = [];
-  if (!snapshot.answers["yt.mode"]) problems.push("la méthode de transmission YouTube");
-  if (!snapshot.answers["m.periode"]) problems.push("la période Meta");
-  if (snapshot.files.length === 0 && missingFlags.length === 0) {
-    problems.push("au moins un élément transmis ou signalé comme introuvable");
-  }
+  const problems = [youtubeBlocker(state), metaBlocker(state)].filter(
+    (message): message is string => message !== null,
+  );
   if (problems.length > 0) {
-    return { ok: false as const, error: `Il manque ${problems.join(", ")}.` };
+    return { ok: false as const, error: problems.join(" ") };
   }
 
   const { data, error } = await supabaseAdmin

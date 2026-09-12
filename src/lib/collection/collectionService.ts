@@ -9,7 +9,8 @@ import {
   saveCollectionAnswers,
   submitCollection,
 } from "./collection.functions";
-import type { RemoteFile, RemoteSnapshot } from "./remote-types";
+import type { RemoteFile } from "./remote-types";
+import { stateFromSnapshot } from "./snapshot";
 import { emptyState, type AnswerValue, type CollectionState, type FileMeta } from "./types";
 
 /**
@@ -23,27 +24,6 @@ const BUCKET = "collection-files";
 
 /** Les objets File ne sont pas sérialisables : ils vivent en mémoire pour la session. */
 const blobs = new Map<string, File>();
-
-function stateFromSnapshot(snapshot: RemoteSnapshot): CollectionState {
-  const files: Record<string, FileMeta[]> = {};
-  for (const f of snapshot.files) {
-    const meta: FileMeta = {
-      id: f.id,
-      remoteId: f.id,
-      name: f.name,
-      size: f.size,
-      type: f.mime,
-      addedAt: new Date(f.uploadedAt).getTime(),
-    };
-    (files[f.slot] ??= []).push(meta);
-  }
-  return {
-    version: 1,
-    answers: snapshot.answers as Record<string, AnswerValue>,
-    files,
-    submittedAt: snapshot.submittedAt ? new Date(snapshot.submittedAt).getTime() : null,
-  };
-}
 
 export const collectionService = {
   /** Cache local (affichage immédiat avant la réponse serveur). */
