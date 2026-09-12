@@ -10,8 +10,7 @@ export const Route = createFileRoute("/_authenticated")({
     // Premier accès équipe : active le rôle si l'email figure dans les invitations.
     // Sans invitation, la fonction ne fait rien (aucune élévation possible).
     try {
-      // Fonction SQL créée par migration ; absente des types générés actuels.
-      await supabase.rpc("claim_team_access" as never);
+      await supabase.rpc("claim_team_access");
     } catch {
       /* accès déjà actif ou non invité : aucun impact sur la navigation */
     }

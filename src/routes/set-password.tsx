@@ -84,8 +84,7 @@ function SetPasswordPage() {
       return;
     }
 
-    // Fonction SQL créée par migration ; absente des types générés actuels.
-    const { error: claimError } = await supabase.rpc("claim_team_access" as never);
+    const { error: claimError } = await supabase.rpc("claim_team_access");
 
     if (claimError) {
       setBusy(false);
