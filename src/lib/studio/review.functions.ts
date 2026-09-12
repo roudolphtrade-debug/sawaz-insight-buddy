@@ -184,7 +184,7 @@ export const listClientReviews = createServerFn({ method: "POST" })
         toSummary(
           r,
           (versions.data ?? []).filter((v) => v.review_id === r.id),
-          projectName.get(r.project_id) ?? "Projet",
+          projectName.get(r.project_id ?? "") ?? "Projet",
         ),
       ),
     };
@@ -268,7 +268,7 @@ export const getReviewWorkspace = createServerFn({ method: "POST" })
 
     const [versionsRes, projectRes, clientRes] = await Promise.all([
       supabase.from("review_versions").select("*").eq("review_id", review.id),
-      supabase.from("projects").select("name").eq("id", review.project_id).maybeSingle(),
+      supabase.from("projects").select("name").eq("id", review.project_id ?? "").maybeSingle(),
       supabase
         .from("clients")
         .select("name, slug, brand, theme_tokens")

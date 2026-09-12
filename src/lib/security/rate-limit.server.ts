@@ -55,12 +55,14 @@ export async function consumeRateLimit(
   subject: string,
 ): Promise<boolean> {
   const { limit, windowSeconds } = RATE_LIMITS[bucket];
-  const { data, error } = await supabaseAdmin.rpc("consume_rate_limit", {
+  // Fonction SQL créée par migration ; absente des types générés tant que
+  // l'instance n'est pas reconnectée, d'où la conversion de nom.
+  const { data, error } = await supabaseAdmin.rpc("consume_rate_limit" as never, {
     _bucket: bucket,
     _subject: subject,
     _limit: limit,
     _window_seconds: windowSeconds,
-  });
+  } as never);
   if (error) {
     console.error("[rate-limit] compteur indisponible", error.message);
     return true;
