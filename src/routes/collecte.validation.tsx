@@ -46,6 +46,7 @@ function ValidationScreen() {
     scopeStatus,
     getExpectedScope,
     reportSessionMismatch,
+    markAttempted,
   } = useCollection();
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -258,6 +259,7 @@ function ValidationScreen() {
             next={null}
             nextLabel={sending ? "Transmission en cours…" : "Transmettre mes éléments"}
             onNext={() => void handleSubmit()}
+            onBlocked={() => markAttempted("validation")}
             blocker={blocker}
             busy={sending}
             note={sending ? "Transmission sécurisée en cours…" : undefined}

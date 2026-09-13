@@ -109,7 +109,7 @@ const lexique = [
 
 function YoutubeScreen() {
   const { previous, next } = stepNeighbours("youtube");
-  const { state, setAnswer } = useCollection();
+  const { state, setAnswer, markAttempted } = useCollection();
   const [mode, setMode] = useSingleChoice(K.yt.mode);
   const [exportImpossible, toggleExportImpossible] = useBoolAnswer(K.yt.exportImpossible);
   const blocker = youtubeBlocker(state);
@@ -337,6 +337,9 @@ function YoutubeScreen() {
         onBlocked={() => {
           setShowErrors(true);
           if (issues[0]) focusQuestion(issues[0].id);
+          // Signal d'interface pur (jamais envoyé au serveur) consommé par
+          // `ProgressBar` pour afficher « À corriger » sur cet onglet.
+          markAttempted("youtube");
         }}
       />
     </StepLayout>

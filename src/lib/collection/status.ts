@@ -253,34 +253,41 @@ export function allSummaries(s: CollectionState): SectionSummary[] {
   return [youtubeSummary(s), contenusSummary(s), metaSummary(s)];
 }
 
-/* ---------- Liste complète des questions manquantes (source unique des règles) ---------- */
+/* ---------- Exigences obligatoires (source unique des règles) ---------- */
+
+/**
+ * Une exigence obligatoire actuellement applicable (dépend des réponses déjà données,
+ * ex. le mode de transmission choisi), et si elle est satisfaite ou non à cet instant.
+ * `youtubeIssues`/`youtubeBlocker`/`youtubeRequirementSummary` — et leurs équivalents
+ * Meta — sont tous les trois *dérivés* de ces listes, jamais recopiés : c'est ici, et
+ * uniquement ici, que vit chaque condition métier.
+ */
+type Check = { id: string; message: string; satisfied: boolean };
 
 /**
  * YouTube
- * Source unique des règles de validation YouTube : la méthode choisie détermine
- * précisément les éléments requis. `youtubeBlocker` (utilisé côté serveur dans
- * session.server.ts) est *dérivé* de cette liste — voir plus bas — afin qu'aucune
- * condition métier ne soit jamais recopiée entre les deux.
+ * La méthode choisie détermine précisément les éléments requis.
  */
-export function youtubeIssues(s: CollectionState): BlockerIssue[] {
-  const issues: BlockerIssue[] = [];
+function youtubeChecks(s: CollectionState): Check[] {
+  const checks: Check[] = [];
   const mode = str(s, K.yt.mode);
 
-  if (!mode) {
-    issues.push({ id: "yt-mode", message: "Choisis une méthode de transmission YouTube." });
-    return issues;
-  }
+  checks.push({
+    id: "yt-mode",
+    message: "Choisis une méthode de transmission YouTube.",
+    satisfied: Boolean(mode),
+  });
+  if (!mode) return checks;
 
   const exportImpossible = bool(s, K.yt.exportImpossible);
 
   if (mode === "export" && !exportImpossible) {
-    if (readyCount(s, SLOT.ytExport) === 0) {
-      issues.push({
-        id: "yt-export",
-        message: "Ajoute ton export YouTube ou indique que tu n'arrives pas à l'exporter.",
-      });
-    }
-    return issues;
+    checks.push({
+      id: "yt-export",
+      message: "Ajoute ton export YouTube ou indique que tu n'arrives pas à l'exporter.",
+      satisfied: readyCount(s, SLOT.ytExport) > 0,
+    });
+    return checks;
   }
 
   if (mode === "captures" || mode === "guide" || (mode === "export" && exportImpossible)) {
@@ -306,94 +313,143 @@ export function youtubeIssues(s: CollectionState): BlockerIssue[] {
     ];
 
     for (const capture of captures) {
-      if (readyCount(s, capture.slot) === 0 && !bool(s, capture.missingKey)) {
-        issues.push({
-          id: capture.id,
-          message: `Ajoute la capture ${capture.label}, ou indique que tu ne trouves pas cet écran.`,
-        });
-      }
+      checks.push({
+        id: capture.id,
+        message: `Ajoute la capture ${capture.label}, ou indique que tu ne trouves pas cet écran.`,
+        satisfied: readyCount(s, capture.slot) > 0 || bool(s, capture.missingKey),
+      });
     }
   }
 
-  return issues;
+  return checks;
 }
 
 /**
  * Meta
- * Source unique des règles de validation Meta (voir la remarque de `youtubeIssues`
- * ci-dessus) : chaque question marquée Obligatoire ou Conditionnelle est contrôlée
- * dans l'ordre où elle apparaît à l'écran.
+ * Chaque question marquée Obligatoire ou Conditionnelle est contrôlée dans l'ordre où
+ * elle apparaît à l'écran.
  */
-export function metaIssues(s: CollectionState): BlockerIssue[] {
-  const issues: BlockerIssue[] = [];
+function metaChecks(s: CollectionState): Check[] {
+  const checks: Check[] = [];
 
   const periode = str(s, K.meta.periode);
   const periodeAutre = (str(s, K.meta.periodeAutre) ?? "").trim();
-  if (!periode) {
-    issues.push({ id: "meta-periode", message: "Sélectionne la période que tu vas nous transmettre." });
-  } else if (periode === "autre" && !periodeAutre) {
-    issues.push({ id: "meta-periode", message: "Précise la période que tu vas nous transmettre." });
-  }
+  checks.push({
+    id: "meta-periode",
+    message: !periode
+      ? "Sélectionne la période que tu vas nous transmettre."
+      : "Précise la période que tu vas nous transmettre.",
+    satisfied: Boolean(periode) && !(periode === "autre" && !periodeAutre),
+  });
 
   const objectifs = arr(s, K.meta.objectifs);
-  if (objectifs.length === 0) {
-    issues.push({ id: "meta-objectifs", message: "Sélectionne au moins un objectif de campagne Meta." });
-  } else if (objectifs.includes("autre") && !(str(s, K.meta.objectifAutre) ?? "").trim()) {
-    issues.push({ id: "meta-objectifs", message: "Précise l'autre objectif de campagne sélectionné." });
-  }
+  checks.push({
+    id: "meta-objectifs",
+    message:
+      objectifs.length === 0
+        ? "Sélectionne au moins un objectif de campagne Meta."
+        : "Précise l'autre objectif de campagne sélectionné.",
+    satisfied:
+      objectifs.length > 0 &&
+      !(objectifs.includes("autre") && !(str(s, K.meta.objectifAutre) ?? "").trim()),
+  });
 
   const destinations = arr(s, K.meta.destination);
-  if (destinations.length === 0) {
-    issues.push({ id: "meta-destination", message: "Sélectionne au moins une destination après le clic." });
-  } else if (destinations.includes("autre-page") && !(str(s, K.meta.destinationAutre) ?? "").trim()) {
-    issues.push({ id: "meta-destination", message: "Précise l'autre destination sélectionnée." });
-  }
+  checks.push({
+    id: "meta-destination",
+    message:
+      destinations.length === 0
+        ? "Sélectionne au moins une destination après le clic."
+        : "Précise l'autre destination sélectionnée.",
+    satisfied:
+      destinations.length > 0 &&
+      !(destinations.includes("autre-page") && !(str(s, K.meta.destinationAutre) ?? "").trim()),
+  });
 
   const mode = str(s, K.meta.mode);
-  if (!mode) {
-    issues.push({ id: "meta-mode", message: "Choisis une méthode de transmission Meta." });
-  } else {
+  checks.push({
+    id: "meta-mode",
+    message: "Choisis une méthode de transmission Meta.",
+    satisfied: Boolean(mode),
+  });
+
+  if (mode) {
     const exportImpossible = bool(s, K.meta.exportImpossible);
-    if (mode === "export" && !exportImpossible && readyCount(s, SLOT.metaExport) === 0) {
-      issues.push({
+    if (mode === "export" && !exportImpossible) {
+      checks.push({
         id: "meta-export",
         message: "Ajoute ton export Meta ou indique que tu n'arrives pas à l'exporter.",
+        satisfied: readyCount(s, SLOT.metaExport) > 0,
       });
     }
-    if (
-      (mode === "captures" || mode === "guide" || (mode === "export" && exportImpossible)) &&
-      readyCount(s, SLOT.metaCaptures) === 0
-    ) {
-      issues.push({ id: "meta-captures", message: "Ajoute au moins une capture Meta." });
+    if (mode === "captures" || mode === "guide" || (mode === "export" && exportImpossible)) {
+      checks.push({
+        id: "meta-captures",
+        message: "Ajoute au moins une capture Meta.",
+        satisfied: readyCount(s, SLOT.metaCaptures) > 0,
+      });
     }
   }
 
   const results = arr(s, K.meta.results);
   const resultsMissing = bool(s, K.meta.resultsMissing);
   if (!resultsMissing) {
-    if (results.length === 0) {
-      issues.push({
-        id: "meta-results",
-        message: "Indique ce que compte la colonne Results, ou indique que tu ne trouves pas cette donnée.",
-      });
-    } else if (results.includes("autre") && !(str(s, K.meta.resultsAutre) ?? "").trim()) {
-      issues.push({ id: "meta-results", message: "Précise ce que compte la colonne Results." });
-    } else if (results.includes("inconnu") && readyCount(s, SLOT.metaResults) === 0) {
-      issues.push({
-        id: "meta-results",
-        message: "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée.",
-      });
-    }
+    const autreOk = !(results.includes("autre") && !(str(s, K.meta.resultsAutre) ?? "").trim());
+    const inconnuOk = !(results.includes("inconnu") && readyCount(s, SLOT.metaResults) === 0);
+    checks.push({
+      id: "meta-results",
+      message:
+        results.length === 0
+          ? "Indique ce que compte la colonne Results, ou indique que tu ne trouves pas cette donnée."
+          : !autreOk
+            ? "Précise ce que compte la colonne Results."
+            : "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée.",
+      satisfied: results.length > 0 && autreOk && inconnuOk,
+    });
   }
 
-  if (!str(s, K.meta.tracking)) {
-    issues.push({ id: "meta-tracking", message: "Indique si tu connais le système de suivi Meta installé." });
-  }
+  checks.push({
+    id: "meta-tracking",
+    message: "Indique si tu connais le système de suivi Meta installé.",
+    satisfied: Boolean(str(s, K.meta.tracking)),
+  });
 
-  return issues;
+  return checks;
 }
 
-/* ---------- Validation du parcours (dérivée des listes ci-dessus) ---------- */
+/** Nombre d'exigences obligatoires actuellement applicables, et combien sont
+ *  satisfaites — sert au calcul de progression centralisé (`collectionProgress`) et au
+ *  statut par section affiché dans `ProgressBar`. */
+export type RequirementSummary = { applicable: number; satisfied: number };
+
+const summarize = (checks: Check[]): RequirementSummary => ({
+  applicable: checks.length,
+  satisfied: checks.filter((c) => c.satisfied).length,
+});
+
+export function youtubeRequirementSummary(s: CollectionState): RequirementSummary {
+  return summarize(youtubeChecks(s));
+}
+
+export function metaRequirementSummary(s: CollectionState): RequirementSummary {
+  return summarize(metaChecks(s));
+}
+
+/**
+ * Liste complète des questions manquantes (résumé d'erreurs) : mêmes règles que
+ * `youtubeChecks` ci-dessus, filtrées aux exigences non satisfaites.
+ */
+export function youtubeIssues(s: CollectionState): BlockerIssue[] {
+  return youtubeChecks(s)
+    .filter((c) => !c.satisfied)
+    .map(({ id, message }) => ({ id, message }));
+}
+
+export function metaIssues(s: CollectionState): BlockerIssue[] {
+  return metaChecks(s)
+    .filter((c) => !c.satisfied)
+    .map(({ id, message }) => ({ id, message }));
+}
 
 /**
  * YouTube — dérivé de `youtubeIssues` : ne renvoie que la première question manquante
@@ -409,4 +465,102 @@ export function youtubeBlocker(s: CollectionState): string | null {
  */
 export function metaBlocker(s: CollectionState): string | null {
   return metaIssues(s)[0]?.message ?? null;
+}
+
+/* ---------- Progression réelle et statut par section ---------- */
+
+export type CollectionProgress = RequirementSummary & {
+  remaining: number;
+  /** Jamais 100 tant que `remaining > 0` (voir le clamp ci-dessous), pour ne jamais
+   *  afficher une jauge pleine alors qu'une exigence obligatoire manque encore. */
+  percent: number;
+};
+
+/**
+ * Calcul centralisé, unique source de la progression affichée (remplace l'ancien
+ * pourcentage fondé sur l'index de page) : additionne les exigences YouTube et Meta
+ * réellement applicables compte tenu des réponses déjà données (Contenus n'a aucune
+ * exigence obligatoire, donc ne contribue jamais au total).
+ */
+export function collectionProgress(s: CollectionState): CollectionProgress {
+  const yt = youtubeRequirementSummary(s);
+  const meta = metaRequirementSummary(s);
+  const applicable = yt.applicable + meta.applicable;
+  const satisfied = yt.satisfied + meta.satisfied;
+  const remaining = applicable - satisfied;
+  const rawPercent = applicable === 0 ? 100 : Math.floor((satisfied / applicable) * 100);
+  const percent = remaining > 0 ? Math.min(rawPercent, 99) : 100;
+  return { applicable, satisfied, remaining, percent };
+}
+
+export type SectionState = "not-started" | "in-progress" | "done" | "needs-correction";
+
+/**
+ * YouTube / Meta : le statut dépend des exigences réellement satisfaites, et de
+ * `attemptedInvalid` — un signal d'interface pur (jamais dérivé de l'état des
+ * réponses lui-même) indiquant qu'une tentative de progression a déjà échoué sur
+ * cette section. Sans nouvelle tentative bloquée, une section incomplète reste
+ * simplement « En cours », jamais « À corriger ».
+ */
+function requirementSectionState(
+  { applicable, satisfied }: RequirementSummary,
+  attemptedInvalid: boolean,
+): SectionState {
+  if (satisfied >= applicable) return "done";
+  if (attemptedInvalid) return "needs-correction";
+  return satisfied > 0 ? "in-progress" : "not-started";
+}
+
+export function youtubeSectionState(s: CollectionState, attemptedInvalid: boolean): SectionState {
+  return requirementSectionState(youtubeRequirementSummary(s), attemptedInvalid);
+}
+
+export function metaSectionState(s: CollectionState, attemptedInvalid: boolean): SectionState {
+  return requirementSectionState(metaRequirementSummary(s), attemptedInvalid);
+}
+
+/**
+ * Contenus : aucune exigence obligatoire n'y bloque jamais rien (voir `contenusSummary`
+ * plus haut, toutes optionnelles) — il n'existe donc pas de notion de section
+ * « incomplète » à corriger ici. Le statut ne peut refléter qu'une interaction ou son
+ * absence, jamais un index de page.
+ */
+export function contenusSectionState(s: CollectionState): SectionState {
+  const touched =
+    Boolean(str(s, K.contenus.membresVideos)) ||
+    Boolean(str(s, K.contenus.traffic)) ||
+    Boolean(str(s, K.contenus.newReturning)) ||
+    count(s, SLOT.guideVip) > 0 ||
+    count(s, SLOT.dixVideos) > 0 ||
+    bool(s, K.contenus.guideVipMissing) ||
+    bool(s, K.contenus.skipDixVideos);
+  return touched ? "done" : "not-started";
+}
+
+/**
+ * Introduction : page purement informative, sans réponse propre. « Terminée » dès que
+ * la collecte a réellement progressé ailleurs (une exigence YouTube/Meta satisfaite,
+ * ou une interaction Contenus) — jamais déduit de la position de la page courante.
+ */
+export function introductionSectionState(s: CollectionState): SectionState {
+  const progressedElsewhere =
+    youtubeRequirementSummary(s).satisfied > 0 ||
+    metaRequirementSummary(s).satisfied > 0 ||
+    contenusSectionState(s) === "done";
+  return progressedElsewhere ? "done" : "not-started";
+}
+
+/**
+ * Validation : « Terminée » seulement une fois réellement transmise au serveur (voir
+ * `state.submittedAt`) — avoir simplement rempli toutes les exigences ne suffit pas
+ * tant que l'envoi n'a pas eu lieu.
+ */
+export function validationSectionState(
+  s: CollectionState,
+  attemptedInvalid: boolean,
+): SectionState {
+  if (s.submittedAt !== null) return "done";
+  const { satisfied, remaining } = collectionProgress(s);
+  if (remaining > 0 && attemptedInvalid) return "needs-correction";
+  return satisfied > 0 ? "in-progress" : "not-started";
 }

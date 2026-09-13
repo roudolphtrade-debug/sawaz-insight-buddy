@@ -94,7 +94,7 @@ const lexique = [
 
 function MetaScreen() {
   const { previous, next } = stepNeighbours("meta");
-  const { state, setAnswer } = useCollection();
+  const { state, setAnswer, markAttempted } = useCollection();
   const [periode, setPeriode] = useSingleChoice(K.meta.periode);
   const [periodeAutre, setPeriodeAutre] = useTextAnswer(K.meta.periodeAutre);
   const [objectifs, toggleObjectif] = useMultiChoice(K.meta.objectifs);
@@ -554,6 +554,9 @@ function MetaScreen() {
         onBlocked={() => {
           setShowErrors(true);
           if (issues[0]) focusQuestion(issues[0].id);
+          // Signal d'interface pur (jamais envoyé au serveur) consommé par
+          // `ProgressBar` pour afficher « À corriger » sur cet onglet.
+          markAttempted("meta");
         }}
       />
     </StepLayout>

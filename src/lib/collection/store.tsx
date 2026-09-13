@@ -11,6 +11,7 @@ import {
 
 import { collectionService, type ExpectedScope } from "./collectionService";
 import { emptyState, type AnswerValue, type CollectionState, type FileMeta } from "./types";
+import type { StepId } from "@/lib/steps";
 
 export type RemoteStatus = "idle" | "syncing" | "online" | "offline" | "submitted";
 
@@ -77,6 +78,13 @@ type Ctx = {
   markSubmitted: (at: number | null) => void;
   refresh: () => void;
   reset: () => void;
+  /** Étapes où une tentative de progression a échoué faute de réponse obligatoire —
+   *  état d'interface pur (jamais persisté, jamais envoyé au serveur), utilisé pour
+   *  afficher le statut « À corriger » dans `ProgressBar`. Remis à zéro à chaque
+   *  montage de `CollectionProvider` (recharger la page l'efface). */
+  attemptedSteps: ReadonlySet<StepId>;
+  /** Enregistre qu'une tentative de progression invalide a eu lieu sur `step`. */
+  markAttempted: (step: StepId) => void;
 };
 
 const CollectionContext = createContext<Ctx | null>(null);
@@ -179,6 +187,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const [remoteStatus, setRemoteStatus] = useState<RemoteStatus>("idle");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [scopeStatus, setScopeStatus] = useState<ScopeStatus>("unconfirmed");
+  const [attemptedSteps, setAttemptedSteps] = useState<ReadonlySet<StepId>>(() => new Set());
   const hydratedRef = useRef(false);
   const onlineRef = useRef(false);
   const pendingAnswers = useRef<Record<string, AnswerValue>>({});
@@ -991,6 +1000,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
 
   const getExpectedScope = useCallback(() => expectedScopeRef.current, []);
 
+  const markAttempted = useCallback((step: StepId) => {
+    setAttemptedSteps((prev) => (prev.has(step) ? prev : new Set(prev).add(step)));
+  }, []);
+
   const value = useMemo<Ctx>(
     () => ({
       state,
@@ -1010,6 +1023,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       markSubmitted,
       refresh,
       reset,
+      attemptedSteps,
+      markAttempted,
     }),
     [
       state,
@@ -1029,6 +1044,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       markSubmitted,
       refresh,
       reset,
+      attemptedSteps,
+      markAttempted,
     ],
   );
 
