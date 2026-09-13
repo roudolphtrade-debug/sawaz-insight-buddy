@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { NavigationFooter } from "@/components/NavigationFooter";
@@ -8,7 +8,7 @@ import { SawazCallout } from "@/components/SawazCallout";
 import { StatusList } from "@/components/StatusList";
 import { StepLayout } from "@/components/StepLayout";
 import { collectionService } from "@/lib/collection/collectionService";
-import { allSummaries } from "@/lib/collection/status";
+import { allSummaries, metaBlocker, youtubeBlocker } from "@/lib/collection/status";
 import { useCollection } from "@/lib/collection/store";
 import { stepNeighbours } from "@/lib/steps";
 
@@ -35,25 +35,86 @@ export const Route = createFileRoute("/collecte/validation")({
 
 function ValidationScreen() {
   const { previous } = stepNeighbours("validation");
-  const { state, hydrated, markSubmitted } = useCollection();
+  const {
+    state,
+    hydrated,
+    markSubmitted,
+    flushAnswers,
+    hasPendingAnswers,
+    scopeStatus,
+    getExpectedScope,
+    reportSessionMismatch,
+  } = useCollection();
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const sections = allSummaries(state);
   const sent = state.submittedAt !== null;
+  // Mêmes règles obligatoires que les étapes précédentes (partagées avec le serveur
+  // dans session.server.ts) : un fichier encore en attente ou en échec y compte
+  // désormais comme non transmis, donc bloque aussi la transmission finale ici.
+  const blocker = youtubeBlocker(state) ?? metaBlocker(state);
+  // Verrou synchrone contre le double-clic : `sending` (état React) ne se met à jour
+  // qu'au prochain rendu, une ref lit et ferme la fenêtre immédiatement.
+  const submitLockRef = useRef(false);
 
   const handleSubmit = async () => {
-    if (sending || sent) return;
+    if (submitLockRef.current || sending || sent) return;
+    submitLockRef.current = true;
     setSending(true);
     setSendError(null);
 
     try {
-      const res = await collectionService.submit();
+      // La transmission ne doit jamais démarrer tant que le serveur n'a pas confirmé
+      // exactement la même portée que celle affichée — vérifié explicitement ici, car
+      // `flushAnswers()` réussit trivialement (rien en file) si aucune réponse n'a
+      // encore été saisie, ce qui contournerait sinon ce contrôle.
+      if (scopeStatus === "mismatch") {
+        setSendError(
+          "La session a changé et ne correspond plus à celle confirmée par le serveur. Ferme cette page et rouvre le lien de collecte que tu as reçu.",
+        );
+        return;
+      }
+      if (scopeStatus !== "confirmed") {
+        setSendError(
+          "La session n'est pas encore confirmée par le serveur. Vérifie ta connexion puis réessaie.",
+        );
+        return;
+      }
+
+      // La décision de transmettre se fonde sur le résultat réel du flush et sur une
+      // lecture directe de la file d'attente, jamais sur `saveStatus` (état React
+      // potentiellement pas encore re-rendu au moment de cet appel).
+      const flushResult = await flushAnswers();
+      if (!flushResult.ok) {
+        setSendError(
+          "Certaines réponses n'ont pas pu être synchronisées avec le serveur. Réessaie dans un instant.",
+        );
+        return;
+      }
+      if (hasPendingAnswers()) {
+        setSendError(
+          "Une réponse est encore en cours d'enregistrement. Réessaie dans un instant.",
+        );
+        return;
+      }
+
+      const expected = getExpectedScope();
+      if (!expected) {
+        setSendError(
+          "La session n'est pas encore confirmée par le serveur. Vérifie ta connexion puis réessaie.",
+        );
+        return;
+      }
+
+      const res = await collectionService.submit(expected);
       if (res.ok) {
         markSubmitted(res.submittedAt);
       } else {
+        if (res.code === "SESSION_MISMATCH") reportSessionMismatch();
         setSendError(res.error);
       }
     } finally {
+      submitLockRef.current = false;
       setSending(false);
     }
   };
@@ -158,8 +219,9 @@ function ValidationScreen() {
             next={null}
             nextLabel={sending ? "Transmission en cours…" : "Transmettre mes éléments"}
             onNext={() => void handleSubmit()}
+            blocker={blocker}
             busy={sending}
-            note={sending ? "Transmission sécurisée en cours…" : "Tes réponses sont enregistrées automatiquement."}
+            note={sending ? "Transmission sécurisée en cours…" : undefined}
           />
         </>
       )}

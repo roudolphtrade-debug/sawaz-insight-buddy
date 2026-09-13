@@ -1,10 +1,10 @@
-import { FileText, UploadCloud, X } from "lucide-react";
+import { FileText, RotateCw, UploadCloud, X } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { MicroConfirm } from "@/components/MicroConfirm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { collectionService, formatBytes } from "@/lib/collection/collectionService";
-import { useSlotFiles } from "@/lib/collection/store";
+import { useCollection, useSlotFiles } from "@/lib/collection/store";
 import { cn } from "@/lib/utils";
 
 /** Sélection locale de fichiers : aucun upload serveur n'est effectué ici. */
@@ -21,7 +21,8 @@ export function FileUploader({
   accept?: string;
   multiple?: boolean;
 }) {
-  const { files, add, remove } = useSlotFiles(slot);
+  const { files, add, retry, remove } = useSlotFiles(slot);
+  const { scopeStatus } = useCollection();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -98,22 +99,51 @@ export function FileUploader({
       {files.length > 0 ? (
         <ul className="space-y-2">
           {files.map((file) => {
-            const tone = file.error ? "neutral" : file.pending ? "neutral" : "gold";
+            const hasBlob = collectionService.hasFile(file.id);
+            // Un objet confirmé absent sans copie locale ne peut plus être repris :
+            // seule une re-sélection (supprimer puis rajouter) permet d'avancer.
+            const lostWithoutRecovery = file.errorReason === "missing" && !hasBlob;
+            // Seul un fichier confirmé côté serveur (remoteId), ni en cours d'envoi ni
+            // en erreur, est réellement transmis — même définition que `readyCount`
+            // dans status.ts, pour ne jamais afficher « Reçu » sur ce que le serveur ne
+            // reconnaît pas encore comme tel.
+            const transmitted = Boolean(file.remoteId) && !file.pending && !file.error;
+            const canRetry =
+              Boolean(file.error) &&
+              file.errorReason !== "rejected" &&
+              !lostWithoutRecovery &&
+              // Une session en décalage ne propose jamais de nouvelle tentative
+              // distante : le bouton retenterait contre une portée déjà invalidée.
+              scopeStatus !== "mismatch";
+
+            const tone = file.error ? "neutral" : file.pending ? "neutral" : transmitted ? "gold" : "neutral";
 
             const statusLabel = file.error
-              ? "Échec"
+              ? file.errorReason === "rejected"
+                ? "Refusé"
+                : lostWithoutRecovery
+                  ? "Perdu"
+                  : "Échec"
               : file.pending
                 ? "Envoi…"
-                : file.remoteId
+                : transmitted
                   ? "Reçu"
-                  : collectionService.hasFile(file.id)
-                    ? "Prêt"
+                  : hasBlob
+                    ? "En attente de confirmation"
                     : "À re-sélectionner";
+
+            const guidance = file.error
+              ? file.errorReason === "rejected"
+                ? "Format ou contenu refusé : supprime ce fichier et choisis-en un autre."
+                : lostWithoutRecovery
+                  ? "Fichier perdu après une actualisation : supprime-le puis resélectionne-le."
+                  : file.error
+              : null;
 
             return (
               <li
                 key={file.id}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5"
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5"
               >
                 <span
                   className="grid size-8 shrink-0 place-items-center rounded-md border border-border bg-surface-raised text-muted-foreground"
@@ -129,18 +159,36 @@ export function FileUploader({
                   <span className="block text-xs text-muted-foreground">
                     {formatBytes(file.size)}
                   </span>
+                  {guidance ? (
+                    <span className="mt-0.5 block text-xs font-medium text-destructive">
+                      {guidance}
+                    </span>
+                  ) : null}
                 </span>
 
-                <StatusBadge tone={tone}>{statusLabel}</StatusBadge>
+                <span className="flex shrink-0 items-center gap-2">
+                  <StatusBadge tone={tone}>{statusLabel}</StatusBadge>
 
-                <button
-                  type="button"
-                  onClick={() => remove(file.id)}
-                  aria-label={`Supprimer ${file.name}`}
-                  className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-                >
-                  <X className="size-4" aria-hidden="true" />
-                </button>
+                  {canRetry ? (
+                    <button
+                      type="button"
+                      onClick={() => retry(file.id)}
+                      aria-label={`Réessayer l'envoi de ${file.name}`}
+                      className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+                    >
+                      <RotateCw className="size-4" aria-hidden="true" />
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => remove(file.id)}
+                    aria-label={`Supprimer ${file.name}`}
+                    className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </button>
+                </span>
               </li>
             );
           })}

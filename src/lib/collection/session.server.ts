@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
+import { StorageApiError } from "@supabase/supabase-js";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logSecurityEvent } from "@/lib/observability/server-log";
@@ -92,6 +93,36 @@ export type LinkSession = {
 
 export class SessionError extends Error {
   override name = "SessionError";
+}
+
+/**
+ * Le client confirme une portée exactement une fois (voir `store.tsx`), puis la
+ * retransmet à chaque opération mutante. Ce n'est jamais la source de vérité — la
+ * session `HttpOnly` et la soumission réellement active le restent — mais un onglet
+ * dont la portée attendue diverge de celle-ci (cookie de session partagé écrasé entre
+ * onglets par l'ouverture d'un autre lien, notamment) ne doit jamais écrire par erreur
+ * dans une autre collecte.
+ */
+export type ExpectedScope = { collectionId: string; submissionId: string };
+
+export class SessionMismatchError extends Error {
+  override name = "SessionMismatchError";
+  constructor() {
+    super("Session changée — rouvrez le lien de cette collecte.");
+  }
+}
+
+/** À vérifier dès que possible, avant toute lecture/écriture liée à la submission. */
+export function assertExpectedScope(session: LinkSession, expected: ExpectedScope) {
+  if (expected.collectionId !== session.collectionId) throw new SessionMismatchError();
+}
+
+/** À vérifier après résolution de la submission réellement active, avant toute écriture. */
+export function assertExpectedSubmission(
+  submission: { id: string },
+  expected: ExpectedScope,
+) {
+  if (expected.submissionId !== submission.id) throw new SessionMismatchError();
 }
 
 /** Valide le lien (empreinte, révocation, expiration, quota) et ouvre une session temporaire. */
@@ -285,11 +316,16 @@ async function requireWorkingSubmission(session: LinkSession) {
 export async function persistAnswers(
   session: LinkSession,
   answers: Record<string, unknown>,
+  expected: ExpectedScope,
 ): Promise<number> {
   const keys = Object.keys(answers);
   if (keys.length === 0) return 0;
+  // Le rate limit s'applique avant tout, y compris à une portée erronée : sinon un
+  // décalage de session deviendrait un moyen de sonder sans limite.
   await enforceRateLimit("autosave", callerSubject(session.sessionId));
+  assertExpectedScope(session, expected);
   const submission = await requireWorkingSubmission(session);
+  assertExpectedSubmission(submission, expected);
 
   await supabaseAdmin
     .from("answers")
@@ -314,9 +350,13 @@ export async function persistAnswers(
 export async function createUploadTicket(
   session: LinkSession,
   input: { slot: string; name: string; mime: string; size: number },
+  expected: ExpectedScope,
 ) {
   await enforceRateLimit("upload", callerSubject(session.sessionId));
+  assertExpectedScope(session, expected);
 
+  // Métadonnées invalides (type, taille, nom) : rejet définitif avant toute écriture en
+  // stockage, ce fichier précis ne passera jamais tel quel.
   const invalid = validateUpload(input);
   if (invalid) {
     logSecurityEvent("collection", "upload.rejected_metadata", {
@@ -325,53 +365,154 @@ export async function createUploadTicket(
       size: input.size,
       reason: invalid,
     });
-    return { ok: false as const, error: invalid };
+    return { ok: false as const, error: invalid, reason: "rejected" as const };
   }
 
   const submission = await requireWorkingSubmission(session);
+  assertExpectedSubmission(submission, expected);
   // Nom entièrement généré côté serveur : le nom d'origine ne sert qu'à l'affichage.
   const path = `${session.clientId}/${session.collectionId}/${submission.id}/${input.slot}/${storageObjectName(input.mime, crypto.randomUUID())}`;
 
+  // Échec de création de l'URL signée : erreur de service temporaire, jamais un rejet du
+  // fichier — aucune `reason` pour ne pas être classée comme définitive côté client.
   const { data, error } = await supabaseAdmin.storage.from(BUCKET).createSignedUploadUrl(path);
   if (error || !data) return { ok: false as const, error: "Envoi impossible" };
 
   return { ok: true as const, data: { path: data.path, token: data.token } };
 }
 
-/** Télécharge les premiers octets de l'objet stocké et les inspecte. */
-async function inspectStoredObject(path: string, mime: string): Promise<string | null> {
+type StoredObjectCheck =
+  | { ok: true }
+  | { ok: false; message: string; reason?: "missing" | "rejected" };
+
+/**
+ * Télécharge les premiers octets de l'objet stocké et les inspecte.
+ * Ne renvoie `reason: "missing"` que lorsque Supabase Storage confirme explicitement
+ * l'absence de l'objet (HTTP 404 via `StorageApiError`) ; toute autre erreur de
+ * téléchargement (panne réseau, erreur serveur, réponse inattendue — `StorageUnknownError`
+ * ou un statut différent de 404) reste non classée pour ne jamais déclencher à tort la
+ * création d'un nouveau ticket d'upload côté client.
+ */
+async function inspectStoredObject(path: string, mime: string): Promise<StoredObjectCheck> {
   const { data, error } = await supabaseAdmin.storage.from(BUCKET).download(path);
-  if (error || !data) return "Fichier introuvable après envoi";
+
+  if (error) {
+    const confirmedMissing = error instanceof StorageApiError && error.status === 404;
+    return {
+      ok: false,
+      message: confirmedMissing
+        ? "Fichier introuvable après envoi"
+        : "Vérification du fichier impossible, réessaie",
+      ...(confirmedMissing ? { reason: "missing" as const } : {}),
+    };
+  }
+  if (!data) {
+    return { ok: false, message: "Vérification du fichier impossible, réessaie" };
+  }
+
   const head = new Uint8Array(await data.slice(0, 4096).arrayBuffer());
-  if (data.size > MAX_FILE_BYTES) return "Fichier trop volumineux (20 Mo maximum)";
-  return inspectFileHead(head, mime);
+  if (data.size > MAX_FILE_BYTES) {
+    return { ok: false, message: "Fichier trop volumineux (20 Mo maximum)", reason: "rejected" };
+  }
+  const scan = inspectFileHead(head, mime);
+  if (scan) return { ok: false, message: scan, reason: "rejected" };
+
+  return { ok: true };
+}
+
+type ExistingFileRow = {
+  id: string;
+  slot_key: string;
+  original_name: string;
+  size_bytes: number | null;
+  mime: string | null;
+  uploaded_at: string;
+};
+
+function mapExistingFile(row: ExistingFileRow) {
+  return {
+    id: row.id,
+    slot: row.slot_key,
+    name: row.original_name,
+    size: Number(row.size_bytes ?? 0),
+    mime: row.mime ?? "",
+    uploadedAt: row.uploaded_at,
+  };
 }
 
 export async function registerUploadedFile(
   session: LinkSession,
   input: { slot: string; path: string; name: string; mime: string; size: number },
+  expected: ExpectedScope,
 ) {
+  assertExpectedScope(session, expected);
+
+  // Métadonnées invalides (type, taille, nom) : rejet définitif, ce fichier précis ne
+  // passera jamais — l'interface doit proposer de le supprimer, pas de réessayer.
   const invalid = validateUpload(input);
-  if (invalid) return { ok: false as const, error: invalid };
+  if (invalid) return { ok: false as const, error: invalid, reason: "rejected" as const };
 
   const submission = await requireWorkingSubmission(session);
+  assertExpectedSubmission(submission, expected);
+
+  // Le chemin est entièrement généré par le serveur au moment du ticket : un chemin qui
+  // ne respecte pas le préfixe attendu pour cette submission trahit une falsification
+  // côté client, jamais un cas d'usage normal. Validé avant toute lecture en base.
   const prefix = `${session.clientId}/${session.collectionId}/${submission.id}/${input.slot}/`;
   if (!input.path.startsWith(prefix) || input.path.includes("..")) {
     logSecurityEvent("collection", "upload.path_rejected", { slot: input.slot });
     return { ok: false as const, error: "Chemin de fichier refusé" };
   }
 
+  const findExisting = () =>
+    supabaseAdmin
+      .from("files")
+      .select("id, slot_key, original_name, size_bytes, mime, uploaded_at")
+      .eq("storage_path", input.path)
+      .eq("submission_id", submission.id)
+      .eq("client_id", session.clientId)
+      .maybeSingle();
+
+  // Reprise : si ce chemin a déjà été confirmé pour cette submission (upload d'octets
+  // réussi mais une confirmation précédente interrompue avant sa réponse), on renvoie
+  // l'enregistrement existant tel quel, sans re-scanner ni ré-insérer.
+  //
+  // NB : l'unicité de `storage_path` en base n'est pas vérifiable depuis ce dépôt (aucune
+  // migration SQL n'y est suivie, et les types générés n'exposent que les clés étrangères,
+  // jamais les contraintes d'unicité). Cette recherche ferme la fenêtre de course dans le
+  // cas courant (une seule confirmation à la fois pour ce chemin), et la relecture après
+  // échec d'insertion plus bas récupère le cas où une contrainte unique existe et a rejeté
+  // un doublon. Si aucune contrainte de ce type n'existe réellement en base, deux
+  // confirmations réellement concurrentes pour un même chemin pourraient toutes deux
+  // franchir cette vérification et produire deux lignes dupliquées : ce risque résiduel
+  // n'est pas éliminé ici, faute de pouvoir agir sur le schéma.
+  const { data: existing, error: existingError } = await findExisting();
+  if (existingError) {
+    return { ok: false as const, error: "Vérification du fichier impossible, réessaie" };
+  }
+  if (existing) {
+    return { ok: true as const, data: mapExistingFile(existing) };
+  }
+
   // Contrôle du contenu réellement écrit dans le bucket privé (magic bytes,
   // exécutables, CSV piégé) : le MIME annoncé par le navigateur ne fait pas foi.
-  const scan = await inspectStoredObject(input.path, input.mime);
-  if (scan) {
-    await supabaseAdmin.storage.from(BUCKET).remove([input.path]);
-    logSecurityEvent("collection", "upload.rejected_content", {
-      slot: input.slot,
-      mime: input.mime,
-      reason: scan,
-    });
-    return { ok: false as const, error: scan };
+  const check = await inspectStoredObject(input.path, input.mime);
+  if (!check.ok) {
+    // Seul un contenu confirmé refusé justifie de supprimer l'objet : une absence n'a
+    // rien à supprimer, une erreur non concluante ne doit jamais y toucher.
+    if (check.reason === "rejected") {
+      await supabaseAdmin.storage.from(BUCKET).remove([input.path]);
+      logSecurityEvent("collection", "upload.rejected_content", {
+        slot: input.slot,
+        mime: input.mime,
+        reason: check.message,
+      });
+    }
+    return {
+      ok: false as const,
+      error: check.message,
+      ...(check.reason ? { reason: check.reason } : {}),
+    };
   }
 
   const { data, error } = await supabaseAdmin
@@ -390,23 +531,21 @@ export async function registerUploadedFile(
     .select("id, slot_key, original_name, size_bytes, mime, uploaded_at")
     .single();
 
-  if (error || !data) return { ok: false as const, error: "Enregistrement du fichier refusé" };
+  if (error || !data) {
+    // L'échec peut venir d'une contrainte d'unicité déclenchée par une confirmation
+    // concurrente gagnante entre-temps : on relit avant de déclarer un échec définitif.
+    const { data: retry } = await findExisting();
+    if (retry) return { ok: true as const, data: mapExistingFile(retry) };
+    return { ok: false as const, error: "Enregistrement du fichier refusé" };
+  }
 
-  return {
-    ok: true as const,
-    data: {
-      id: data.id,
-      slot: data.slot_key,
-      name: data.original_name,
-      size: Number(data.size_bytes ?? 0),
-      mime: data.mime ?? "",
-      uploadedAt: data.uploaded_at,
-    },
-  };
+  return { ok: true as const, data: mapExistingFile(data) };
 }
 
-export async function removeFile(session: LinkSession, fileId: string) {
+export async function removeFile(session: LinkSession, fileId: string, expected: ExpectedScope) {
+  assertExpectedScope(session, expected);
   const submission = await requireWorkingSubmission(session);
+  assertExpectedSubmission(submission, expected);
 
   const { data: file } = await supabaseAdmin
     .from("files")
@@ -431,9 +570,11 @@ export async function removeFile(session: LinkSession, fileId: string) {
  * passage atomique à `submitted`. Les deux validations partagent la même
  * source pour ne jamais diverger.
  */
-export async function submitCurrentSubmission(session: LinkSession) {
+export async function submitCurrentSubmission(session: LinkSession, expected: ExpectedScope) {
   await enforceRateLimit("submit", callerSubject(session.sessionId));
+  assertExpectedScope(session, expected);
   const submission = await getOrCreateSubmission(session);
+  assertExpectedSubmission(submission, expected);
   if (submission.status === "submitted") {
     return { ok: true as const, data: { submittedAt: submission.submitted_at as string } };
   }
@@ -456,7 +597,27 @@ export async function submitCurrentSubmission(session: LinkSession) {
     .select("submitted_at")
     .maybeSingle();
 
-  if (error || !data?.submitted_at) return { ok: false as const, error: "Envoi impossible" };
+  if (error || !data?.submitted_at) {
+    // Aucune ligne mise à jour : soit une confirmation concurrente a déjà fait passer
+    // cette submission à `submitted` entre notre lecture et cet UPDATE conditionnel, soit
+    // l'écriture a échoué pour une autre raison. On relit l'état réel avant de trancher,
+    // pour ne jamais renvoyer un échec à un appel qui a en réalité réussi ailleurs.
+    const { data: current } = await supabaseAdmin
+      .from("submissions")
+      .select("status, submitted_at")
+      .eq("id", submission.id)
+      .eq("client_id", session.clientId)
+      .eq("collection_id", session.collectionId)
+      .maybeSingle();
+
+    if (current?.status === "submitted" && current.submitted_at) {
+      // Déjà finalisée par cet autre appel : il a déjà écrit son propre journal d'audit,
+      // ne pas en créer un second ici.
+      return { ok: true as const, data: { submittedAt: current.submitted_at } };
+    }
+
+    return { ok: false as const, error: "Envoi impossible" };
+  }
 
   await supabaseAdmin.from("audit_logs").insert({
     client_id: session.clientId,

@@ -23,6 +23,18 @@ export const STATUS_LABEL: Record<ItemStatus, string> = {
 };
 
 const count = (s: CollectionState, slot: string) => (s.files[slot] ?? []).length;
+/**
+ * Comme `count`, mais un fichier ne compte comme réellement transmis que s'il possède
+ * un `remoteId` (confirmé côté serveur), n'est pas `pending` et ne porte aucune
+ * `error` — réservé aux fonctions de blocage (`youtubeBlocker`/`metaBlocker`), qui
+ * partagent ce module avec le serveur (`session.server.ts`). Un fichier local en
+ * attente de confirmation de portée, neutralisé après un `SESSION_MISMATCH`, ou dont
+ * l'import n'a simplement jamais été confirmé par le serveur, ne satisfait jamais ce
+ * décompte, même s'il n'est ni `pending` ni en `error` à cet instant.
+ * Les récapitulatifs d'affichage (`*Summary`) continuent d'utiliser `count` tel quel.
+ */
+const readyCount = (s: CollectionState, slot: string) =>
+  (s.files[slot] ?? []).filter((f) => Boolean(f.remoteId) && !f.pending && !f.error).length;
 const bool = (s: CollectionState, key: string) => s.answers[key] === true;
 const str = (s: CollectionState, key: string) =>
   typeof s.answers[key] === "string" ? (s.answers[key] as string) : null;
@@ -251,7 +263,7 @@ export function youtubeBlocker(s: CollectionState): string | null {
   const exportImpossible = bool(s, K.yt.exportImpossible);
 
   if (mode === "export" && !exportImpossible) {
-    if (count(s, SLOT.ytExport) === 0) {
+    if (readyCount(s, SLOT.ytExport) === 0) {
       return "Ajoute ton export YouTube ou indique que tu n'arrives pas à l'exporter.";
     }
 
@@ -282,7 +294,7 @@ export function youtubeBlocker(s: CollectionState): string | null {
 
   for (const capture of captures) {
     if (
-      count(s, capture.slot) === 0 &&
+      readyCount(s, capture.slot) === 0 &&
       !bool(s, capture.missingKey)
     ) {
       return `Ajoute la capture ${capture.label}, ou indique que tu ne trouves pas cet écran.`;
@@ -344,7 +356,7 @@ export function metaBlocker(s: CollectionState): string | null {
   const exportImpossible = bool(s, K.meta.exportImpossible);
 
   if (mode === "export" && !exportImpossible) {
-    if (count(s, SLOT.metaExport) === 0) {
+    if (readyCount(s, SLOT.metaExport) === 0) {
       return "Ajoute ton export Meta ou indique que tu n'arrives pas à l'exporter.";
     }
   }
@@ -354,7 +366,7 @@ export function metaBlocker(s: CollectionState): string | null {
     mode === "guide" ||
     (mode === "export" && exportImpossible)
   ) {
-    if (count(s, SLOT.metaCaptures) === 0) {
+    if (readyCount(s, SLOT.metaCaptures) === 0) {
       return "Ajoute au moins une capture Meta.";
     }
   }
@@ -377,7 +389,7 @@ export function metaBlocker(s: CollectionState): string | null {
   if (
     !resultsMissing &&
     results.includes("inconnu") &&
-    count(s, SLOT.metaResults) === 0
+    readyCount(s, SLOT.metaResults) === 0
   ) {
     return "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée.";
   }
