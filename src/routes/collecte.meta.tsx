@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Camera, HelpCircle, Table2 } from "lucide-react";
 
 import { ChoiceGroup, MultiChoiceGroup } from "@/components/ChoiceGroup";
 import { Disclosure } from "@/components/Disclosure";
+import { ErrorSummary } from "@/components/ErrorSummary";
 import { FileUploader } from "@/components/FileUploader";
 import { MetricCard } from "@/components/MetricCard";
 import { NavigationFooter } from "@/components/NavigationFooter";
@@ -15,7 +16,7 @@ import { SawazCallout } from "@/components/SawazCallout";
 import { StepLayout } from "@/components/StepLayout";
 import { TextAnswer } from "@/components/TextAnswer";
 import { K, SLOT } from "@/lib/collection/keys";
-import { metaBlocker } from "@/lib/collection/status";
+import { metaBlocker, metaIssues } from "@/lib/collection/status";
 import {
   useBoolAnswer,
   useCollection,
@@ -23,6 +24,7 @@ import {
   useSingleChoice,
   useTextAnswer,
 } from "@/lib/collection/store";
+import { useQuestionFocus } from "@/lib/useQuestionFocus";
 
 import { stepNeighbours } from "@/lib/steps";
 
@@ -106,16 +108,29 @@ function MetaScreen() {
   const [tracking, setTracking] = useSingleChoice(K.meta.tracking);
   const [resultsMissing, toggleResultsMissing] = useBoolAnswer(K.meta.resultsMissing);
   const blocker = metaBlocker(state);
+  const issues = metaIssues(state);
   const [showErrors, setShowErrors] = useState(false);
+  const { highlightedId, focusQuestion } = useQuestionFocus();
 
   const showExport = mode === "export" && !exportImpossible;
   const showCaptures =
     mode === "captures" || mode === "guide" || (mode === "export" && exportImpossible);
 
+  // Voir la même logique dans collecte.youtube.tsx : lien profond depuis le résumé
+  // agrégé de la page de validation ; `focusQuestion` attend le montage de la question.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    setShowErrors(true);
+    focusQuestion(hash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <StepLayout
       step="meta"
       title="Meta — Comprendre le moteur de volume"
+      hasErrors={showErrors && Boolean(blocker)}
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
         <div className="space-y-2 text-sm leading-relaxed text-body">
@@ -138,12 +153,18 @@ function MetaScreen() {
         </div>
       </section>
 
+      {showErrors ? (
+        <ErrorSummary items={issues} onSelect={focusQuestion} />
+      ) : null}
+
       <SectionBlock
         eyebrow="Bloc 1"
         title="Le contexte de tes campagnes"
         description="Période observée, objectifs utilisés et destination des personnes après le clic."
       >
       <QuestionCard
+        id="meta-periode"
+        highlighted={highlightedId === "meta-periode"}
         number="Question 01"
         status="required"
         error={
@@ -178,6 +199,8 @@ function MetaScreen() {
       </QuestionCard>
 
       <QuestionCard
+        id="meta-objectifs"
+        highlighted={highlightedId === "meta-objectifs"}
         number="Question 02"
         status="required"
         error={
@@ -225,6 +248,8 @@ function MetaScreen() {
       </QuestionCard>
 
       <QuestionCard
+        id="meta-destination"
+        highlighted={highlightedId === "meta-destination"}
         number="Question 03"
         status="required"
         error={
@@ -270,6 +295,8 @@ function MetaScreen() {
         description="Choisis la méthode la plus simple pour toi : export ou captures. Les deux nous conviennent."
       >
       <QuestionCard
+        id="meta-mode"
+        highlighted={highlightedId === "meta-mode"}
         number="Question 04"
         status="required"
         error={showErrors && !mode ? "Choisis une méthode de transmission Meta." : undefined}
@@ -292,6 +319,8 @@ function MetaScreen() {
 
       {showExport ? (
         <QuestionCard
+          id="meta-export"
+          highlighted={highlightedId === "meta-export"}
           number="Option recommandée"
           status="conditional"
           error={
@@ -341,6 +370,8 @@ function MetaScreen() {
 
       {showCaptures ? (
         <QuestionCard
+          id="meta-captures"
+          highlighted={highlightedId === "meta-captures"}
           number="Captures Meta"
           status="conditional"
           error={
@@ -395,6 +426,8 @@ function MetaScreen() {
         description="Ce que Meta compte comme résultat, et ce qui est réellement mesuré après le clic."
       >
       <QuestionCard
+        id="meta-results"
+        highlighted={highlightedId === "meta-results"}
         number="Results"
         status="required"
         error={
@@ -469,6 +502,8 @@ function MetaScreen() {
       </QuestionCard>
 
       <QuestionCard
+        id="meta-tracking"
+        highlighted={highlightedId === "meta-tracking"}
         number="Suivi"
         status="required"
         error={showErrors && !tracking ? "Indique si tu connais le système de suivi Meta installé." : undefined}
@@ -516,7 +551,10 @@ function MetaScreen() {
         next={next}
         nextLabel="Continuer"
         blocker={blocker}
-        onBlocked={() => setShowErrors(true)}
+        onBlocked={() => {
+          setShowErrors(true);
+          if (issues[0]) focusQuestion(issues[0].id);
+        }}
       />
     </StepLayout>
   );

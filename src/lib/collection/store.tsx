@@ -21,7 +21,18 @@ export type RemoteStatus = "idle" | "syncing" | "online" | "offline" | "submitte
  */
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-export type FlushResult = { ok: true } | { ok: false; error: string };
+export type FlushResult = { ok: true } | { ok: false; error: string; code?: "SESSION_MISMATCH" };
+
+/**
+ * Résultat synchrone d'une tentative de suppression de fichier :
+ * - "removed" : retiré localement (fichier jamais confirmé) ou suppression distante
+ *   lancée (le retrait de l'affichage suit alors la confirmation serveur) ;
+ * - "deferred" : rien tenté — hors ligne ou portée pas encore confirmée, à retenter
+ *   plus tard ;
+ * - "blocked" : session en décalage (`SESSION_MISMATCH`), déjà signalée globalement ;
+ * - "not-found" : rien à faire, ce fichier n'est déjà plus dans l'état local.
+ */
+export type RemoveFileOutcome = "removed" | "deferred" | "blocked" | "not-found";
 
 /**
  * Portée (collecte + soumission) du cache actuellement affiché, vis-à-vis du serveur :
@@ -62,7 +73,7 @@ type Ctx = {
   addFiles: (slot: string, files: File[]) => void;
   /** Reprise manuelle d'un import de fichier en échec. */
   retryFile: (slot: string, id: string) => void;
-  removeFile: (slot: string, id: string) => void;
+  removeFile: (slot: string, id: string) => RemoveFileOutcome;
   markSubmitted: (at: number | null) => void;
   refresh: () => void;
   reset: () => void;
@@ -516,7 +527,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           // localement), toute reprise automatique est arrêtée.
           pendingAnswers.current = { ...batch, ...pendingAnswers.current };
           handleSessionMismatch();
-          result = { ok: false, error: res.error };
+          // `code` permet à l'appelant (ex. la page de validation) de reconnaître ce
+          // cas précis et de ne pas afficher un second message redondant avec le
+          // bandeau global déjà déclenché par `handleSessionMismatch()`.
+          result = { ok: false, error: res.error, code: "SESSION_MISMATCH" };
           break;
         }
 
@@ -906,19 +920,19 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
    * apparence alors qu'elle existe toujours côté serveur.
    */
   const removeFile = useCallback(
-    (slot: string, id: string) => {
-      if (scopeStatusRef.current === "mismatch") return;
+    (slot: string, id: string): RemoveFileOutcome => {
+      if (scopeStatusRef.current === "mismatch") return "blocked";
       const meta = (state.files[slot] ?? []).find((f) => f.id === id);
-      if (!meta) return;
+      if (!meta) return "not-found";
 
       if (!meta.remoteId) {
         collectionService.forgetFile(id);
         dropFile(slot, id);
-        return;
+        return "removed";
       }
 
       const expected = expectedScopeRef.current;
-      if (!onlineRef.current || !expected) return;
+      if (!onlineRef.current || !expected) return "deferred";
 
       void collectionService.deleteFile(meta.remoteId, expected).then((res) => {
         if (res.ok) {
@@ -930,6 +944,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         // Refus (portée divergente ou autre échec) : rien n'est modifié localement —
         // l'entrée reste affichée exactement comme avant cet appel.
       });
+      return "removed";
     },
     [dropFile, state.files, handleSessionMismatch],
   );

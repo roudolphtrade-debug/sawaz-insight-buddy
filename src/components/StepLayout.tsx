@@ -4,16 +4,21 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { SawazMark } from "@/components/brand/Logos";
 import type { StepId } from "@/lib/steps";
+import { cn } from "@/lib/utils";
 
 export function StepLayout({
   step,
   title,
   intro,
+  hasErrors = false,
   children,
 }: {
   step: StepId;
   title: string;
   intro?: string;
+  /** Le point de légende « Obligatoire » reste neutre par défaut ; il ne devient rouge
+   *  qu'après une tentative de progression bloquée sur cette page (jamais avant). */
+  hasErrors?: boolean;
   children: ReactNode;
 }) {
   const showLegend = step === "youtube" || step === "contenus" || step === "meta";
@@ -39,7 +44,13 @@ export function StepLayout({
           {showLegend ? (
             <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-border bg-surface/60 px-4 py-3 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-destructive" aria-hidden="true" />
+                <span
+                  className={cn(
+                    "size-2 rounded-full transition-colors",
+                    hasErrors ? "bg-destructive" : "border border-border-strong bg-transparent",
+                  )}
+                  aria-hidden="true"
+                />
                 <strong className="font-semibold text-foreground">Obligatoire</strong>
                 <span>pour continuer</span>
               </span>

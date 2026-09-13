@@ -1,4 +1,4 @@
-import { FileText, RotateCw, UploadCloud, X } from "lucide-react";
+import { AlertCircle, FileText, RotateCw, UploadCloud, X } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { MicroConfirm } from "@/components/MicroConfirm";
@@ -25,10 +25,19 @@ export function FileUploader({
   const { scopeStatus } = useCollection();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  // Retour explicite lorsqu'une suppression ne peut pas être tentée (hors ligne ou
+  // portée pas encore confirmée) : sans ce message, le bouton semble n'avoir aucun
+  // effet, alors que l'entrée reste affichée volontairement (voir `removeFile`).
+  const [deferredNotice, setDeferredNotice] = useState(false);
 
   const handleList = (list: FileList | null) => {
     if (!list) return;
     add(Array.from(list));
+  };
+
+  const handleRemove = (id: string) => {
+    const outcome = remove(id);
+    setDeferredNotice(outcome === "deferred");
   };
 
   return (
@@ -94,6 +103,19 @@ export function FileUploader({
             ? "1 élément bien enregistré"
             : `${files.length} éléments bien enregistrés`}
         </MicroConfirm>
+      ) : null}
+
+      {deferredNotice ? (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-lg border border-border-strong bg-surface-raised px-3.5 py-3 text-sm font-medium text-foreground"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span>
+            Suppression impossible pour le moment : reconnecte-toi ou attends la confirmation de
+            ta collecte, puis réessaie.
+          </span>
+        </div>
       ) : null}
 
       {files.length > 0 ? (
@@ -182,7 +204,7 @@ export function FileUploader({
 
                   <button
                     type="button"
-                    onClick={() => remove(file.id)}
+                    onClick={() => handleRemove(file.id)}
                     aria-label={`Supprimer ${file.name}`}
                     className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
                   >

@@ -1,6 +1,12 @@
 import { K, SLOT } from "./keys";
 import type { CollectionState } from "./types";
 
+/**
+ * Une question obligatoire non satisfaite, identifiée par un `id` stable (utilisé
+ * comme ancre DOM par les pages pour scroller/focaliser la question concernée).
+ */
+export type BlockerIssue = { id: string; message: string };
+
 export type ItemStatus = "transmis" | "partiel" | "indisponible" | "facultatif" | "attente";
 
 export type SummaryItem = {
@@ -247,156 +253,160 @@ export function allSummaries(s: CollectionState): SectionSummary[] {
   return [youtubeSummary(s), contenusSummary(s), metaSummary(s)];
 }
 
-/* ---------- Validation du parcours ---------- */
+/* ---------- Liste complète des questions manquantes (source unique des règles) ---------- */
 
 /**
  * YouTube
- * La méthode choisie détermine précisément les éléments requis.
+ * Source unique des règles de validation YouTube : la méthode choisie détermine
+ * précisément les éléments requis. `youtubeBlocker` (utilisé côté serveur dans
+ * session.server.ts) est *dérivé* de cette liste — voir plus bas — afin qu'aucune
+ * condition métier ne soit jamais recopiée entre les deux.
  */
-export function youtubeBlocker(s: CollectionState): string | null {
+export function youtubeIssues(s: CollectionState): BlockerIssue[] {
+  const issues: BlockerIssue[] = [];
   const mode = str(s, K.yt.mode);
 
   if (!mode) {
-    return "Choisis une méthode de transmission YouTube.";
+    issues.push({ id: "yt-mode", message: "Choisis une méthode de transmission YouTube." });
+    return issues;
   }
 
   const exportImpossible = bool(s, K.yt.exportImpossible);
 
   if (mode === "export" && !exportImpossible) {
     if (readyCount(s, SLOT.ytExport) === 0) {
-      return "Ajoute ton export YouTube ou indique que tu n'arrives pas à l'exporter.";
+      issues.push({
+        id: "yt-export",
+        message: "Ajoute ton export YouTube ou indique que tu n'arrives pas à l'exporter.",
+      });
     }
-
-    return null;
+    return issues;
   }
 
-  const captures: Array<{
-    slot: string;
-    missingKey: string;
-    label: string;
-  }> = [
-    {
-      slot: SLOT.ytOverview,
-      missingKey: K.yt.missingOverview,
-      label: "Overview — Vue d'ensemble",
-    },
-    {
-      slot: SLOT.ytContent,
-      missingKey: K.yt.missingContent,
-      label: "Content — Contenu",
-    },
-    {
-      slot: SLOT.ytAudience,
-      missingKey: K.yt.missingAudience,
-      label: "Audience",
-    },
-  ];
+  if (mode === "captures" || mode === "guide" || (mode === "export" && exportImpossible)) {
+    const captures: Array<{ id: string; slot: string; missingKey: string; label: string }> = [
+      {
+        id: "yt-capture-overview",
+        slot: SLOT.ytOverview,
+        missingKey: K.yt.missingOverview,
+        label: "Overview — Vue d'ensemble",
+      },
+      {
+        id: "yt-capture-content",
+        slot: SLOT.ytContent,
+        missingKey: K.yt.missingContent,
+        label: "Content — Contenu",
+      },
+      {
+        id: "yt-capture-audience",
+        slot: SLOT.ytAudience,
+        missingKey: K.yt.missingAudience,
+        label: "Audience",
+      },
+    ];
 
-  for (const capture of captures) {
-    if (
-      readyCount(s, capture.slot) === 0 &&
-      !bool(s, capture.missingKey)
-    ) {
-      return `Ajoute la capture ${capture.label}, ou indique que tu ne trouves pas cet écran.`;
+    for (const capture of captures) {
+      if (readyCount(s, capture.slot) === 0 && !bool(s, capture.missingKey)) {
+        issues.push({
+          id: capture.id,
+          message: `Ajoute la capture ${capture.label}, ou indique que tu ne trouves pas cet écran.`,
+        });
+      }
     }
   }
 
-  return null;
+  return issues;
 }
 
 /**
  * Meta
- * Chaque question marquée Obligatoire ou Conditionnelle
- * est contrôlée dans l'ordre où elle apparaît à l'écran.
+ * Source unique des règles de validation Meta (voir la remarque de `youtubeIssues`
+ * ci-dessus) : chaque question marquée Obligatoire ou Conditionnelle est contrôlée
+ * dans l'ordre où elle apparaît à l'écran.
  */
-export function metaBlocker(s: CollectionState): string | null {
+export function metaIssues(s: CollectionState): BlockerIssue[] {
+  const issues: BlockerIssue[] = [];
+
   const periode = str(s, K.meta.periode);
   const periodeAutre = (str(s, K.meta.periodeAutre) ?? "").trim();
-
   if (!periode) {
-    return "Sélectionne la période que tu vas nous transmettre.";
-  }
-
-  if (periode === "autre" && !periodeAutre) {
-    return "Précise la période que tu vas nous transmettre.";
+    issues.push({ id: "meta-periode", message: "Sélectionne la période que tu vas nous transmettre." });
+  } else if (periode === "autre" && !periodeAutre) {
+    issues.push({ id: "meta-periode", message: "Précise la période que tu vas nous transmettre." });
   }
 
   const objectifs = arr(s, K.meta.objectifs);
-
   if (objectifs.length === 0) {
-    return "Sélectionne au moins un objectif de campagne Meta.";
-  }
-
-  if (
-    objectifs.includes("autre") &&
-    !(str(s, K.meta.objectifAutre) ?? "").trim()
-  ) {
-    return "Précise l'autre objectif de campagne sélectionné.";
+    issues.push({ id: "meta-objectifs", message: "Sélectionne au moins un objectif de campagne Meta." });
+  } else if (objectifs.includes("autre") && !(str(s, K.meta.objectifAutre) ?? "").trim()) {
+    issues.push({ id: "meta-objectifs", message: "Précise l'autre objectif de campagne sélectionné." });
   }
 
   const destinations = arr(s, K.meta.destination);
-
   if (destinations.length === 0) {
-    return "Sélectionne au moins une destination après le clic.";
-  }
-
-  if (
-    destinations.includes("autre-page") &&
-    !(str(s, K.meta.destinationAutre) ?? "").trim()
-  ) {
-    return "Précise l'autre destination sélectionnée.";
+    issues.push({ id: "meta-destination", message: "Sélectionne au moins une destination après le clic." });
+  } else if (destinations.includes("autre-page") && !(str(s, K.meta.destinationAutre) ?? "").trim()) {
+    issues.push({ id: "meta-destination", message: "Précise l'autre destination sélectionnée." });
   }
 
   const mode = str(s, K.meta.mode);
-
   if (!mode) {
-    return "Choisis une méthode de transmission Meta.";
-  }
-
-  const exportImpossible = bool(s, K.meta.exportImpossible);
-
-  if (mode === "export" && !exportImpossible) {
-    if (readyCount(s, SLOT.metaExport) === 0) {
-      return "Ajoute ton export Meta ou indique que tu n'arrives pas à l'exporter.";
+    issues.push({ id: "meta-mode", message: "Choisis une méthode de transmission Meta." });
+  } else {
+    const exportImpossible = bool(s, K.meta.exportImpossible);
+    if (mode === "export" && !exportImpossible && readyCount(s, SLOT.metaExport) === 0) {
+      issues.push({
+        id: "meta-export",
+        message: "Ajoute ton export Meta ou indique que tu n'arrives pas à l'exporter.",
+      });
     }
-  }
-
-  if (
-    mode === "captures" ||
-    mode === "guide" ||
-    (mode === "export" && exportImpossible)
-  ) {
-    if (readyCount(s, SLOT.metaCaptures) === 0) {
-      return "Ajoute au moins une capture Meta.";
+    if (
+      (mode === "captures" || mode === "guide" || (mode === "export" && exportImpossible)) &&
+      readyCount(s, SLOT.metaCaptures) === 0
+    ) {
+      issues.push({ id: "meta-captures", message: "Ajoute au moins une capture Meta." });
     }
   }
 
   const results = arr(s, K.meta.results);
   const resultsMissing = bool(s, K.meta.resultsMissing);
-
-  if (!resultsMissing && results.length === 0) {
-    return "Indique ce que compte la colonne Results, ou indique que tu ne trouves pas cette donnée.";
-  }
-
-  if (
-    !resultsMissing &&
-    results.includes("autre") &&
-    !(str(s, K.meta.resultsAutre) ?? "").trim()
-  ) {
-    return "Précise ce que compte la colonne Results.";
-  }
-
-  if (
-    !resultsMissing &&
-    results.includes("inconnu") &&
-    readyCount(s, SLOT.metaResults) === 0
-  ) {
-    return "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée.";
+  if (!resultsMissing) {
+    if (results.length === 0) {
+      issues.push({
+        id: "meta-results",
+        message: "Indique ce que compte la colonne Results, ou indique que tu ne trouves pas cette donnée.",
+      });
+    } else if (results.includes("autre") && !(str(s, K.meta.resultsAutre) ?? "").trim()) {
+      issues.push({ id: "meta-results", message: "Précise ce que compte la colonne Results." });
+    } else if (results.includes("inconnu") && readyCount(s, SLOT.metaResults) === 0) {
+      issues.push({
+        id: "meta-results",
+        message: "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée.",
+      });
+    }
   }
 
   if (!str(s, K.meta.tracking)) {
-    return "Indique si tu connais le système de suivi Meta installé.";
+    issues.push({ id: "meta-tracking", message: "Indique si tu connais le système de suivi Meta installé." });
   }
 
-  return null;
+  return issues;
+}
+
+/* ---------- Validation du parcours (dérivée des listes ci-dessus) ---------- */
+
+/**
+ * YouTube — dérivé de `youtubeIssues` : ne renvoie que la première question manquante
+ * (même ordre de priorité), pour l'usage côté serveur (session.server.ts) où un seul
+ * message suffit à bloquer la soumission. Aucune condition métier n'est recopiée ici.
+ */
+export function youtubeBlocker(s: CollectionState): string | null {
+  return youtubeIssues(s)[0]?.message ?? null;
+}
+
+/**
+ * Meta — dérivé de `metaIssues`, voir la remarque de `youtubeBlocker` ci-dessus.
+ */
+export function metaBlocker(s: CollectionState): string | null {
+  return metaIssues(s)[0]?.message ?? null;
 }

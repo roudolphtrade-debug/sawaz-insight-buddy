@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Camera, HelpCircle, Table2 } from "lucide-react";
 
 import { ChoiceGroup } from "@/components/ChoiceGroup";
 import { Disclosure } from "@/components/Disclosure";
+import { ErrorSummary } from "@/components/ErrorSummary";
 import { FileUploader } from "@/components/FileUploader";
 import { MetricCard } from "@/components/MetricCard";
 import { NavigationFooter } from "@/components/NavigationFooter";
@@ -13,12 +14,13 @@ import { QuestionCard } from "@/components/QuestionCard";
 import { SawazCallout } from "@/components/SawazCallout";
 import { StepLayout } from "@/components/StepLayout";
 import { K, SLOT } from "@/lib/collection/keys";
-import { youtubeBlocker } from "@/lib/collection/status";
+import { youtubeBlocker, youtubeIssues } from "@/lib/collection/status";
 import {
   useBoolAnswer,
   useCollection,
   useSingleChoice,
 } from "@/lib/collection/store";
+import { useQuestionFocus } from "@/lib/useQuestionFocus";
 import { stepNeighbours } from "@/lib/steps";
 
 export const Route = createFileRoute("/collecte/youtube")({
@@ -44,6 +46,7 @@ export const Route = createFileRoute("/collecte/youtube")({
 
 const captures = [
   {
+    id: "yt-capture-overview",
     title: "Overview — Vue d'ensemble",
     slot: SLOT.ytOverview,
     missingKey: K.yt.missingOverview,
@@ -52,6 +55,7 @@ const captures = [
     why: "Pour comprendre la performance générale de YouTube sur la période.",
   },
   {
+    id: "yt-capture-content",
     title: "Content — Contenu",
     slot: SLOT.ytContent,
     missingKey: K.yt.missingContent,
@@ -60,6 +64,7 @@ const captures = [
     why: "Pour observer notamment les vues, impressions et clics.",
   },
   {
+    id: "yt-capture-audience",
     title: "Audience",
     slot: SLOT.ytAudience,
     missingKey: K.yt.missingAudience,
@@ -108,18 +113,33 @@ function YoutubeScreen() {
   const [mode, setMode] = useSingleChoice(K.yt.mode);
   const [exportImpossible, toggleExportImpossible] = useBoolAnswer(K.yt.exportImpossible);
   const blocker = youtubeBlocker(state);
+  const issues = youtubeIssues(state);
   const [showErrors, setShowErrors] = useState(false);
+  const { highlightedId, focusQuestion } = useQuestionFocus();
 
   const showGuide = mode === "guide";
   const showExport = mode === "export" && !exportImpossible;
   const showCaptures =
     mode === "captures" || mode === "guide" || (mode === "export" && exportImpossible);
 
+  // Lien depuis le résumé d'erreurs agrégé de la page de validation (autre route) :
+  // `#yt-capture-audience` par exemple doit ouvrir cette page directement focalisée sur
+  // la bonne question, sans faire perdre les réponses déjà saisies. `focusQuestion`
+  // attend elle-même que la question demandée soit montée avant de la focaliser.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    setShowErrors(true);
+    focusQuestion(hash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <StepLayout
       step="youtube"
       title="YouTube — Comprendre la qualité de l'audience"
       intro="Tu nous as indiqué que YouTube semble t'apporter moins de volume que Meta, mais des personnes plus qualitatives. Nous allons vérifier cette intuition."
+      hasErrors={showErrors && Boolean(blocker)}
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
         <div className="space-y-3 text-sm leading-relaxed text-body">
@@ -149,7 +169,13 @@ function YoutubeScreen() {
         <PathHint steps={["YouTube Studio", "Analytics", "Sélectionner « 365 derniers jours »"]} />
       </section>
 
+      {showErrors ? (
+        <ErrorSummary items={issues} onSelect={focusQuestion} />
+      ) : null}
+
       <QuestionCard
+        id="yt-mode"
+        highlighted={highlightedId === "yt-mode"}
         number="Question 01"
         status="required"
         error={showErrors && !mode ? "Choisis une méthode de transmission pour continuer." : undefined}
@@ -185,6 +211,8 @@ function YoutubeScreen() {
 
       {showExport ? (
         <QuestionCard
+          id="yt-export"
+          highlighted={highlightedId === "yt-export"}
           number="Option recommandée"
           status="conditional"
           error={
@@ -250,6 +278,8 @@ function YoutubeScreen() {
           {captures.map((capture, i) => (
             <QuestionCard
               key={capture.title}
+              id={capture.id}
+              highlighted={highlightedId === capture.id}
               number={`Capture 0${i + 1}`}
               status="conditional"
               error={
@@ -304,7 +334,10 @@ function YoutubeScreen() {
         next={next}
         nextLabel="Continuer"
         blocker={blocker}
-        onBlocked={() => setShowErrors(true)}
+        onBlocked={() => {
+          setShowErrors(true);
+          if (issues[0]) focusQuestion(issues[0].id);
+        }}
       />
     </StepLayout>
   );

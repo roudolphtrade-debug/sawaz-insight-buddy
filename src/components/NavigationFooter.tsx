@@ -48,13 +48,11 @@ export function NavigationFooter({
   const NoteIcon =
     saveStatus === "saving" ? LoaderCircle : saveStatus === "error" ? AlertTriangle : CheckCircle2;
 
+  // La liste précise des questions manquantes (nombre exact, chaque entrée cliquable)
+  // est désormais portée par `ErrorSummary` sur chaque page — `onBlocked` s'occupe de
+  // l'afficher et d'y amener le focus ; ce footer ne duplique plus ce message.
   const revealErrors = () => {
     onBlocked?.();
-    window.setTimeout(() => {
-      document
-        .querySelector('[data-question-error="true"]')
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
   };
 
   const nextClass = cn(
@@ -127,20 +125,6 @@ export function NavigationFooter({
             >
               Réessayer
             </button>
-          </div>
-        ) : null}
-
-        {blocker ? (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="mb-3 flex items-start gap-2.5 rounded-xl border border-destructive/50 bg-destructive/10 px-3.5 py-3 text-destructive"
-          >
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-wide">Réponse requise</p>
-              <p className="mt-0.5 text-sm font-semibold leading-relaxed">{blocker}</p>
-            </div>
           </div>
         ) : null}
 

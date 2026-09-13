@@ -1,14 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
+import { ErrorSummary, type ErrorSummaryItem } from "@/components/ErrorSummary";
 import { NavigationFooter } from "@/components/NavigationFooter";
 import { QuestionCard } from "@/components/QuestionCard";
 import { SawazCallout } from "@/components/SawazCallout";
 import { StatusList } from "@/components/StatusList";
 import { StepLayout } from "@/components/StepLayout";
 import { collectionService } from "@/lib/collection/collectionService";
-import { allSummaries, metaBlocker, youtubeBlocker } from "@/lib/collection/status";
+import { allSummaries, metaBlocker, metaIssues, youtubeBlocker, youtubeIssues } from "@/lib/collection/status";
 import { useCollection } from "@/lib/collection/store";
 import { stepNeighbours } from "@/lib/steps";
 
@@ -53,6 +55,27 @@ function ValidationScreen() {
   // dans session.server.ts) : un fichier encore en attente ou en échec y compte
   // désormais comme non transmis, donc bloque aussi la transmission finale ici.
   const blocker = youtubeBlocker(state) ?? metaBlocker(state);
+  // Liste complète (pas seulement la première) des questions manquantes, chacune
+  // menant vers l'étape YouTube ou Meta concernée via une ancre `#<id>` lue par cette
+  // page au montage (voir collecte.youtube.tsx / collecte.meta.tsx).
+  const issues: ErrorSummaryItem[] = [
+    ...youtubeIssues(state).map((issue) => ({
+      ...issue,
+      render: (children: ReactNode) => (
+        <Link to="/collecte/youtube" hash={issue.id}>
+          {children}
+        </Link>
+      ),
+    })),
+    ...metaIssues(state).map((issue) => ({
+      ...issue,
+      render: (children: ReactNode) => (
+        <Link to="/collecte/meta" hash={issue.id}>
+          {children}
+        </Link>
+      ),
+    })),
+  ];
   // Verrou synchrone contre le double-clic : `sending` (état React) ne se met à jour
   // qu'au prochain rendu, une ref lit et ferme la fenêtre immédiatement.
   const submitLockRef = useRef(false);
@@ -86,9 +109,14 @@ function ValidationScreen() {
       // potentiellement pas encore re-rendu au moment de cet appel).
       const flushResult = await flushAnswers();
       if (!flushResult.ok) {
-        setSendError(
-          "Certaines réponses n'ont pas pu être synchronisées avec le serveur. Réessaie dans un instant.",
-        );
+        // Un SESSION_MISMATCH déclenche déjà la bannière globale « Session changée »
+        // (gérée par `handleSessionMismatch()` dans le store, affichée par
+        // `NavigationFooter`) : répéter le même message ici serait redondant.
+        if (flushResult.code !== "SESSION_MISMATCH") {
+          setSendError(
+            "Certaines réponses n'ont pas pu être synchronisées avec le serveur. Réessaie dans un instant.",
+          );
+        }
         return;
       }
       if (hasPendingAnswers()) {
@@ -109,8 +137,10 @@ function ValidationScreen() {
       const res = await collectionService.submit(expected);
       if (res.ok) {
         markSubmitted(res.submittedAt);
+      } else if (res.code === "SESSION_MISMATCH") {
+        // Même raison que pour `flushResult` ci-dessus : la bannière globale suffit.
+        reportSessionMismatch();
       } else {
-        if (res.code === "SESSION_MISMATCH") reportSessionMismatch();
         setSendError(res.error);
       }
     } finally {
@@ -196,6 +226,15 @@ function ValidationScreen() {
             Si une donnée manque, ce n'est pas bloquant lorsqu'une option « introuvable » ou
             « indisponible » est proposée. Utilise cette option plutôt que de rester bloqué.
           </SawazCallout>
+
+          {issues.length > 0 ? (
+            <ErrorSummary
+              items={issues}
+              onSelect={() => {
+                /* toutes les entrées ici portent leur propre `render` (Link cross-route) */
+              }}
+            />
+          ) : null}
 
           {sendError ? (
             <div
