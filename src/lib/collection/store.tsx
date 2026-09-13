@@ -365,8 +365,40 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         // onglet/appareil.
         const files: CollectionState["files"] = { ...recovered.state.files };
         for (const [slot, list] of Object.entries(prev.files)) {
-          const neverSent = list.filter((f) => !f.remoteId);
-          if (neverSent.length > 0) files[slot] = [...(files[slot] ?? []), ...neverSent];
+          const existing = files[slot] ?? [];
+          // `prev` peut contenir la version obsolète (pré-reprise) d'un fichier que
+          // `recoverInterruptedUploads` vient de confirmer avec succès — `cached` et
+          // `prev` sont issus de la même lecture `localStorage` dans le cas où le
+          // pointeur optimiste correspond à la portée confirmée. Sans ce
+          // dédoublonnage, cette version obsolète (toujours sans `remoteId`)
+          // réapparaîtrait à côté de la version confirmée. Identité vérifiée par
+          // ordre de fiabilité décroissante : `remoteId` (confirmé serveur) > `id`
+          // local > `uploadPath` (chemin de stockage déjà connu) — la version
+          // porteuse d'un `remoteId` a toujours priorité.
+          const presentKeys = new Set<string>();
+          for (const f of existing) {
+            if (f.remoteId) presentKeys.add(`remoteId:${f.remoteId}`);
+            presentKeys.add(`id:${f.id}`);
+            if (f.uploadPath) presentKeys.add(`uploadPath:${f.uploadPath}`);
+          }
+
+          // Boucle déterministe plutôt qu'un `filter` testé contre un Set figé : un
+          // doublon peut exister *entre deux entrées de `list` elles-mêmes* (pas
+          // seulement contre `existing`) ; `presentKeys` doit donc être mis à jour
+          // immédiatement après l'acceptation de chaque entrée, avant d'examiner la
+          // suivante, pour que ce cas soit lui aussi couvert.
+          const neverSent: FileMeta[] = [];
+          for (const f of list) {
+            if (f.remoteId) continue;
+            const isDuplicate =
+              presentKeys.has(`id:${f.id}`) ||
+              (Boolean(f.uploadPath) && presentKeys.has(`uploadPath:${f.uploadPath}`));
+            if (isDuplicate) continue;
+            presentKeys.add(`id:${f.id}`);
+            if (f.uploadPath) presentKeys.add(`uploadPath:${f.uploadPath}`);
+            neverSent.push(f);
+          }
+          if (neverSent.length > 0) files[slot] = [...existing, ...neverSent];
         }
         return {
           ...recovered.state,
@@ -903,6 +935,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   );
 
   const markSubmitted = useCallback((at: number | null) => {
+    // Résolution tardive possible après démontage (même discipline que `refresh` et
+    // `runFlushChain`) : aucune mise à jour React ne doit s'exécuter dans ce cas.
+    if (!mountedRef.current) return;
     setState((prev) => ({ ...prev, submittedAt: at }));
     if (at !== null) {
       submittedRef.current = true;
