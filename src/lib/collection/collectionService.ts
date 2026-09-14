@@ -35,6 +35,21 @@ function storageKey(scopeId: string) {
 }
 
 /**
+ * Étapes visitées/validées de la collecte (voir `markVisited`/`markCompleted` dans
+ * `store.tsx`) — un état d'interface, jamais une réponse, mais persisté par portée pour
+ * qu'une actualisation ne fasse ni régresser la jauge ni reverrouiller un onglet déjà
+ * légitimement déverrouillé. `attemptedSteps` n'est volontairement pas persisté ici : il
+ * reste éphémère (voir le store).
+ */
+const PROGRESS_STORAGE_PREFIX = "sawaz.lftc.collecte.progress.v1";
+
+function progressStorageKey(scopeId: string) {
+  return `${PROGRESS_STORAGE_PREFIX}.${scopeId}`;
+}
+
+export type PersistedStepProgress = { visited: string[]; completed: string[] };
+
+/**
  * Pointeur de portée « optimiste », propre à cet onglet (`sessionStorage`, jamais
  * partagé entre onglets ni persistant au-delà de leur fermeture). Il permet d'afficher
  * un cache local avant la première réponse serveur, mais ne fait jamais foi à lui
@@ -87,6 +102,36 @@ export const collectionService = {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(storageKey(scopeId));
     blobs.clear();
+  },
+
+  /** Étapes visitées/validées mises en cache pour cette portée, ou vide si absentes. */
+  loadProgress(scopeId: string): PersistedStepProgress {
+    if (typeof window === "undefined") return { visited: [], completed: [] };
+    try {
+      const raw = window.localStorage.getItem(progressStorageKey(scopeId));
+      if (!raw) return { visited: [], completed: [] };
+      const parsed = JSON.parse(raw) as Partial<PersistedStepProgress>;
+      return {
+        visited: Array.isArray(parsed.visited) ? parsed.visited : [],
+        completed: Array.isArray(parsed.completed) ? parsed.completed : [],
+      };
+    } catch {
+      return { visited: [], completed: [] };
+    }
+  },
+
+  saveProgress(scopeId: string, progress: PersistedStepProgress) {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(progressStorageKey(scopeId), JSON.stringify(progress));
+    } catch {
+      /* quota ou mode privé : on ignore silencieusement */
+    }
+  },
+
+  clearProgress(scopeId: string) {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(progressStorageKey(scopeId));
   },
 
   /** Lit le pointeur de portée optimiste de cet onglet, s'il existe. */

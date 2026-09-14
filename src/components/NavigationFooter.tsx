@@ -13,6 +13,7 @@ export function NavigationFooter({
   nextLabel,
   onNext,
   onBlocked,
+  onBeforeNavigate,
   blocker = null,
   busy = false,
   disabled = false,
@@ -23,6 +24,10 @@ export function NavigationFooter({
   nextLabel?: string;
   onNext?: (() => void) | undefined;
   onBlocked?: (() => void) | undefined;
+  /** Appelé juste avant la navigation déclenchée par `next` (jamais si bloqué ou
+   *  indisponible) — pour une étape aux questions facultatives (Contenus), ce clic
+   *  réussi constitue la seule validation explicite possible de l'étape. */
+  onBeforeNavigate?: (() => void) | undefined;
   blocker?: string | null;
   busy?: boolean;
   disabled?: boolean;
@@ -62,8 +67,12 @@ export function NavigationFooter({
   );
 
   return (
-    <footer className="sticky bottom-0 z-30 -mx-5 mt-10 border-t border-border bg-background/95 px-5 py-4 shadow-[0_-10px_30px_rgba(0,0,0,0.18)] backdrop-blur-md sm:-mx-8 sm:px-8">
-      <div className="mx-auto">
+    // Statique (dans le flux normal) sous 640px : un pied de navigation fixe risquait
+    // de masquer du contenu quand une bannière (hors ligne, session changée, erreur
+    // d'enregistrement) l'agrandit sur un petit écran. `sticky` n'est réactivé qu'à
+    // partir de `sm:`, où sa hauteur reste prévisible.
+    <footer className="static mt-10 -mx-4 border-t border-border bg-background/95 px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.18)] backdrop-blur-md sm:sticky sm:bottom-0 sm:z-30 sm:-mx-5 sm:px-5 sm:py-4">
+      <div className="collecte-shell">
         {scopeStatus === "offline" ? (
           <div
             role="status"
@@ -152,6 +161,7 @@ export function NavigationFooter({
                   revealErrors();
                   return;
                 }
+                onBeforeNavigate?.();
                 void navigate({ to: next.to });
               }}
               className={nextClass}

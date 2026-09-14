@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { ChoiceGroup } from "@/components/ChoiceGroup";
 import { FileUploader } from "@/components/FileUploader";
@@ -14,9 +15,11 @@ import { TextAnswer } from "@/components/TextAnswer";
 import { K, SLOT } from "@/lib/collection/keys";
 import {
   useBoolAnswer,
+  useCollection,
   useSingleChoice,
   useTextAnswer,
 } from "@/lib/collection/store";
+import { useStepAccessGuard } from "@/lib/collection/useStepAccessGuard";
 import { stepNeighbours } from "@/lib/steps";
 
 export const Route = createFileRoute("/collecte/contenus")({
@@ -47,6 +50,16 @@ const ouiNon = [
 
 function ContenusScreen() {
   const { previous, next } = stepNeighbours("contenus");
+  const { markVisited, markCompleted } = useCollection();
+  useStepAccessGuard("contenus");
+
+  // Consultation ≠ validation (voir `contenusSectionState`) : ouvrir la page marque
+  // seulement la visite ; l'étape ne devient « Terminée » — et Meta déverrouillé — qu'au
+  // clic réussi sur « Continuer vers Meta » ci-dessous (`markCompleted`).
+  useEffect(() => {
+    markVisited("contenus");
+  }, [markVisited]);
+
   const [membresVideos, setMembresVideos] = useSingleChoice(K.contenus.membresVideos);
   const [membresDetail, setMembresDetail] = useTextAnswer(K.contenus.membresDetail);
   const [guideVipMissing, toggleGuideVipMissing] = useBoolAnswer(K.contenus.guideVipMissing);
@@ -258,7 +271,14 @@ function ContenusScreen() {
         disponible et continue.
       </SawazCallout>
 
-      <NavigationFooter previous={previous} next={next} nextLabel="Continuer vers Meta" />
+      <NavigationFooter
+        previous={previous}
+        next={next}
+        nextLabel="Continuer vers Meta"
+        // Contenus n'a que des questions facultatives (voir `contenusSectionState`) :
+        // ce clic réussi constitue la seule validation explicite possible de l'étape.
+        onBeforeNavigate={() => markCompleted("contenus")}
+      />
     </StepLayout>
   );
 }

@@ -11,7 +11,14 @@ import {
 
 import { collectionService, type ExpectedScope } from "./collectionService";
 import { emptyState, type AnswerValue, type CollectionState, type FileMeta } from "./types";
-import type { StepId } from "@/lib/steps";
+import { STEPS, type StepId } from "@/lib/steps";
+
+const STEP_IDS = new Set<string>(STEPS.map((step) => step.id));
+
+/** Filtre un tableau brut (localStorage) aux seuls identifiants d'étape valides. */
+function toStepIdSet(raw: string[]): Set<StepId> {
+  return new Set(raw.filter((id): id is StepId => STEP_IDS.has(id)));
+}
 
 export type RemoteStatus = "idle" | "syncing" | "online" | "offline" | "submitted";
 
@@ -85,6 +92,22 @@ type Ctx = {
   attemptedSteps: ReadonlySet<StepId>;
   /** Enregistre qu'une tentative de progression invalide a eu lieu sur `step`. */
   markAttempted: (step: StepId) => void;
+  /** Étapes réellement consultées (montées au moins une fois) — même état d'interface
+   *  pur que `attemptedSteps`. Distingue « Validation jamais ouverte » d'une simple
+   *  progression déjà satisfaite ailleurs dans la collecte (`validationSectionState`
+   *  ne doit jamais déduire « En cours » du seul avancement d'une autre section). */
+  visitedSteps: ReadonlySet<StepId>;
+  /** Enregistre que `step` a été consultée. */
+  markVisited: (step: StepId) => void;
+  /** Étapes explicitement validées — distinct de `visitedSteps` : une simple
+   *  consultation ne vaut jamais validation pour une étape aux questions facultatives
+   *  (ex. Contenus, validée uniquement par un clic réussi sur « Continuer vers Meta »).
+   *  Persisté localement par portée (voir `collectionService.loadProgress`/
+   *  `saveProgress`) pour qu'une actualisation ne fasse ni régresser la jauge ni
+   *  reverrouiller un onglet déjà déverrouillé. `attemptedSteps`, lui, reste éphémère. */
+  completedSteps: ReadonlySet<StepId>;
+  /** Enregistre que `step` a été explicitement validée. */
+  markCompleted: (step: StepId) => void;
 };
 
 const CollectionContext = createContext<Ctx | null>(null);
@@ -188,6 +211,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [scopeStatus, setScopeStatus] = useState<ScopeStatus>("unconfirmed");
   const [attemptedSteps, setAttemptedSteps] = useState<ReadonlySet<StepId>>(() => new Set());
+  const [visitedSteps, setVisitedSteps] = useState<ReadonlySet<StepId>>(() => new Set());
+  const [completedSteps, setCompletedSteps] = useState<ReadonlySet<StepId>>(() => new Set());
   const hydratedRef = useRef(false);
   const onlineRef = useRef(false);
   const pendingAnswers = useRef<Record<string, AnswerValue>>({});
@@ -284,7 +309,13 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       retryTimerRef.current = null;
     }
     if (!mountedRef.current) return;
-    if (options?.wipeDisplay) setState(emptyState);
+    if (options?.wipeDisplay) {
+      setState(emptyState);
+      // Portée jamais légitimement confirmée dans cet onglet : la progression affichée
+      // (visitée/validée) ne lui appartient pas non plus.
+      setVisitedSteps(new Set());
+      setCompletedSteps(new Set());
+    }
     setScopeStatus("mismatch");
     setSaveStatus("error");
   }, []);
@@ -316,6 +347,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       // échec ne doit jamais écraser des saisies locales faites entre-temps.
       if (pointerScopeId && !hydratedRef.current) {
         setState(collectionService.load(pointerScopeId));
+        const optimisticProgress = collectionService.loadProgress(pointerScopeId);
+        setVisitedSteps(toStepIdSet(optimisticProgress.visited));
+        setCompletedSteps(toStepIdSet(optimisticProgress.completed));
         setScope("unconfirmed");
         hydratedRef.current = true;
         setHydrated(true);
@@ -369,6 +403,12 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       scopeIdRef.current = authoritativeScopeId;
       expectedScopeRef.current = expected;
       collectionService.writeScopePointer(authoritativeScopeId);
+      // Rechargée pour la portée authentifiée par le serveur (peut différer du pointeur
+      // optimiste ci-dessus, ex. lien rouvert directement sans pointeur préalable dans
+      // cet onglet) : source de vérité finale pour la jauge et les déverrouillages.
+      const persistedProgress = collectionService.loadProgress(authoritativeScopeId);
+      setVisitedSteps(toStepIdSet(persistedProgress.visited));
+      setCompletedSteps(toStepIdSet(persistedProgress.completed));
       const cached = collectionService.load(authoritativeScopeId);
       const next = collectionService.fromSnapshot(res.data);
       const recovered = await recoverInterruptedUploads(cached, next, expected);
@@ -462,6 +502,17 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     if (!hydratedRef.current || !scopeIdRef.current) return;
     collectionService.save(state, scopeIdRef.current);
   }, [state]);
+
+  /** Persistance des étapes visitées/validées, isolée par `scopeIdRef` — pour qu'une
+   *  actualisation ne fasse ni régresser la jauge ni reverrouiller un onglet déjà
+   *  déverrouillé. `attemptedSteps` reste volontairement éphémère (non persisté). */
+  useEffect(() => {
+    if (!hydratedRef.current || !scopeIdRef.current) return;
+    collectionService.saveProgress(scopeIdRef.current, {
+      visited: Array.from(visitedSteps),
+      completed: Array.from(completedSteps),
+    });
+  }, [visitedSteps, completedSteps]);
 
   /**
    * Boucle d'envoi : tant que la file contient des réponses, on tente de les envoyer.
@@ -986,8 +1037,13 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const reset = useCallback(() => {
-    if (scopeIdRef.current) collectionService.clear(scopeIdRef.current);
+    if (scopeIdRef.current) {
+      collectionService.clear(scopeIdRef.current);
+      collectionService.clearProgress(scopeIdRef.current);
+    }
     setState(emptyState);
+    setVisitedSteps(new Set());
+    setCompletedSteps(new Set());
   }, []);
 
   const retryScopeSync = useCallback(() => {
@@ -1002,6 +1058,14 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
 
   const markAttempted = useCallback((step: StepId) => {
     setAttemptedSteps((prev) => (prev.has(step) ? prev : new Set(prev).add(step)));
+  }, []);
+
+  const markVisited = useCallback((step: StepId) => {
+    setVisitedSteps((prev) => (prev.has(step) ? prev : new Set(prev).add(step)));
+  }, []);
+
+  const markCompleted = useCallback((step: StepId) => {
+    setCompletedSteps((prev) => (prev.has(step) ? prev : new Set(prev).add(step)));
   }, []);
 
   const value = useMemo<Ctx>(
@@ -1025,6 +1089,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       reset,
       attemptedSteps,
       markAttempted,
+      visitedSteps,
+      markVisited,
+      completedSteps,
+      markCompleted,
     }),
     [
       state,
@@ -1046,6 +1114,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       reset,
       attemptedSteps,
       markAttempted,
+      visitedSteps,
+      markVisited,
+      completedSteps,
+      markCompleted,
     ],
   );
 

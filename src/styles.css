@@ -120,6 +120,19 @@
   border-radius: var(--radius-2xl);
 }
 
+/*
+ * Grille commune du parcours de collecte : en-tête, progression, onglets, titres,
+ * questions, navigation et pied de page partagent tous ce même conteneur centré, pour
+ * que leurs bords s'alignent exactement à toutes les largeurs. Une seule valeur de
+ * largeur maximale (comprise entre 800 et 840px) et de marge (16 à 20px, via les
+ * classes `px-4 sm:px-5` posées à chaque usage) fait office de source unique.
+ */
+@utility collecte-shell {
+  width: 100%;
+  max-width: 820px;
+  margin-inline: auto;
+}
+
 @utility chrome-ring {
   background: conic-gradient(
     from 120deg,

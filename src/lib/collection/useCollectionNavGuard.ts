@@ -7,9 +7,8 @@ const NAV_FLUSH_TIMEOUT_MS = 2500;
 
 /**
  * Intercepte toute navigation interne quittant une étape de la collecte (Continuer,
- * Précédent, onglets de `ProgressBar` — accessibles dans les deux sens —, retour
- * navigateur) pour déclencher un flush immédiat des réponses en attente avant que la
- * navigation n'aboutisse.
+ * Précédent, onglets déverrouillés de `StepTabs`, retour navigateur) pour déclencher un
+ * flush immédiat des réponses en attente avant que la navigation n'aboutisse.
  *
  * Ne bloque jamais la navigation elle-même — `shouldBlockFn` renvoie toujours `false`
  * — et borne l'attente à `NAV_FLUSH_TIMEOUT_MS` : si le serveur ne répond pas à temps,

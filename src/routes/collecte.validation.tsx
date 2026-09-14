@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
@@ -12,6 +12,7 @@ import { StepLayout } from "@/components/StepLayout";
 import { collectionService } from "@/lib/collection/collectionService";
 import { allSummaries, metaBlocker, metaIssues, youtubeBlocker, youtubeIssues } from "@/lib/collection/status";
 import { useCollection } from "@/lib/collection/store";
+import { useStepAccessGuard } from "@/lib/collection/useStepAccessGuard";
 import { stepNeighbours } from "@/lib/steps";
 
 export const Route = createFileRoute("/collecte/validation")({
@@ -47,11 +48,20 @@ function ValidationScreen() {
     getExpectedScope,
     reportSessionMismatch,
     markAttempted,
+    markVisited,
   } = useCollection();
+  useStepAccessGuard("validation");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const sections = allSummaries(state);
   const sent = state.submittedAt !== null;
+
+  // Signal d'interface pur consommé par `validationSectionState` (via `ProgressBar`) :
+  // sans lui, l'onglet Validation afficherait « En cours » dès qu'une autre section
+  // progresse, même si cette étape n'a jamais été ouverte.
+  useEffect(() => {
+    markVisited("validation");
+  }, [markVisited]);
   // Mêmes règles obligatoires que les étapes précédentes (partagées avec le serveur
   // dans session.server.ts) : un fichier encore en attente ou en échec y compte
   // désormais comme non transmis, donc bloque aussi la transmission finale ici.

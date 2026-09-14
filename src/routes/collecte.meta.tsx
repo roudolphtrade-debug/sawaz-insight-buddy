@@ -24,6 +24,7 @@ import {
   useSingleChoice,
   useTextAnswer,
 } from "@/lib/collection/store";
+import { useStepAccessGuard } from "@/lib/collection/useStepAccessGuard";
 import { useQuestionFocus } from "@/lib/useQuestionFocus";
 
 import { stepNeighbours } from "@/lib/steps";
@@ -94,7 +95,16 @@ const lexique = [
 
 function MetaScreen() {
   const { previous, next } = stepNeighbours("meta");
-  const { state, setAnswer, markAttempted } = useCollection();
+  const { state, setAnswer, markAttempted, markVisited } = useCollection();
+  useStepAccessGuard("meta");
+
+  // Voir la même remarque dans collecte.youtube.tsx : consultation mémorisée pour
+  // permettre un retour direct ultérieur, sans influencer le statut affiché sur cet
+  // onglet (`metaSectionState`, entièrement fondé sur les exigences satisfaites).
+  useEffect(() => {
+    markVisited("meta");
+  }, [markVisited]);
+
   const [periode, setPeriode] = useSingleChoice(K.meta.periode);
   const [periodeAutre, setPeriodeAutre] = useTextAnswer(K.meta.periodeAutre);
   const [objectifs, toggleObjectif] = useMultiChoice(K.meta.objectifs);
@@ -130,7 +140,6 @@ function MetaScreen() {
     <StepLayout
       step="meta"
       title="Meta — Comprendre le moteur de volume"
-      hasErrors={showErrors && Boolean(blocker)}
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
         <div className="space-y-2 text-sm leading-relaxed text-body">

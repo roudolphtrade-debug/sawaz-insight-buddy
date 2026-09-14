@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Clock, Compass, Layers, Scale, Target } from "lucide-react";
 
 import { Disclosure } from "@/components/Disclosure";
@@ -6,6 +7,7 @@ import { NavigationFooter } from "@/components/NavigationFooter";
 import { SawazCallout } from "@/components/SawazCallout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StepLayout } from "@/components/StepLayout";
+import { useCollection } from "@/lib/collection/store";
 import { stepNeighbours } from "@/lib/steps";
 
 export const Route = createFileRoute("/collecte/")({
@@ -55,6 +57,13 @@ const blocs = [
 
 function IntroductionScreen() {
   const { previous, next } = stepNeighbours("introduction");
+  const { markVisited } = useCollection();
+
+  // Signal d'interface pur : Introduction « progresse » dès sa consultation (voir
+  // `introductionSectionState`), et déverrouille YouTube dans `StepTabs`.
+  useEffect(() => {
+    markVisited("introduction");
+  }, [markVisited]);
 
   return (
     <StepLayout

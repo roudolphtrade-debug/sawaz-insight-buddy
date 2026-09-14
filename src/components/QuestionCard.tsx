@@ -40,9 +40,10 @@ export function QuestionCard({
 
   const badge =
     resolvedStatus === "required" ? (
-      // Indicateur neutre, jamais rouge : le rouge est réservé à une erreur réelle
-      // (voir le bloc `error` ci-dessous), pas à un simple rappel « c'est requis ».
-      <span className="inline-flex items-center rounded-full border border-border-strong bg-surface-raised px-2.5 py-1 text-[11px] font-bold text-foreground">
+      // Rouge, comme la légende globale (voir StepLayout) : une vraie erreur reste
+      // visuellement plus forte grâce au fond, à la bordure et au message dédiés sur la
+      // carte elle-même (voir plus bas), jamais confondue avec ce simple badge.
+      <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">
         Obligatoire
       </span>
     ) : resolvedStatus === "optional" ? (

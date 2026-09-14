@@ -20,6 +20,7 @@ import {
   useCollection,
   useSingleChoice,
 } from "@/lib/collection/store";
+import { useStepAccessGuard } from "@/lib/collection/useStepAccessGuard";
 import { useQuestionFocus } from "@/lib/useQuestionFocus";
 import { stepNeighbours } from "@/lib/steps";
 
@@ -109,13 +110,22 @@ const lexique = [
 
 function YoutubeScreen() {
   const { previous, next } = stepNeighbours("youtube");
-  const { state, setAnswer, markAttempted } = useCollection();
+  const { state, setAnswer, markAttempted, markVisited } = useCollection();
+  useStepAccessGuard("youtube");
   const [mode, setMode] = useSingleChoice(K.yt.mode);
   const [exportImpossible, toggleExportImpossible] = useBoolAnswer(K.yt.exportImpossible);
   const blocker = youtubeBlocker(state);
   const issues = youtubeIssues(state);
   const [showErrors, setShowErrors] = useState(false);
   const { highlightedId, focusQuestion } = useQuestionFocus();
+
+  // Consultation mémorisée uniquement pour permettre un retour ultérieur direct à cette
+  // page même si son état de complétion venait à régresser (voir `isStepUnlocked`) —
+  // le statut affiché sur cet onglet reste, lui, entièrement fondé sur les exigences
+  // réellement satisfaites (`youtubeSectionState`), jamais sur cette simple visite.
+  useEffect(() => {
+    markVisited("youtube");
+  }, [markVisited]);
 
   const showGuide = mode === "guide";
   const showExport = mode === "export" && !exportImpossible;
@@ -139,7 +149,6 @@ function YoutubeScreen() {
       step="youtube"
       title="YouTube — Comprendre la qualité de l'audience"
       intro="Tu nous as indiqué que YouTube semble t'apporter moins de volume que Meta, mais des personnes plus qualitatives. Nous allons vérifier cette intuition."
-      hasErrors={showErrors && Boolean(blocker)}
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
         <div className="space-y-3 text-sm leading-relaxed text-body">

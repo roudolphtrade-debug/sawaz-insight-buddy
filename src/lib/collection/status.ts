@@ -469,27 +469,89 @@ export function metaBlocker(s: CollectionState): string | null {
 
 /* ---------- Progression réelle et statut par section ---------- */
 
+/** Exigences YouTube + Meta réellement applicables et satisfaites (Contenus n'a aucune
+ *  exigence obligatoire, donc ne contribue jamais à ce total) — indépendant de toute
+ *  consultation de page, utilisé à la fois pour `remaining` (« X exigences restantes »)
+ *  et comme composante du calcul hybride ci-dessous. */
+function requirementTotals(s: CollectionState): RequirementSummary {
+  const yt = youtubeRequirementSummary(s);
+  const meta = metaRequirementSummary(s);
+  return { applicable: yt.applicable + meta.applicable, satisfied: yt.satisfied + meta.satisfied };
+}
+
 export type CollectionProgress = RequirementSummary & {
+  /** `applicable - satisfied`, strictement les exigences YouTube/Meta encore
+   *  manquantes — jamais masqué par le calcul hybride ci-dessous. */
   remaining: number;
-  /** Jamais 100 tant que `remaining > 0` (voir le clamp ci-dessous), pour ne jamais
-   *  afficher une jauge pleine alors qu'une exigence obligatoire manque encore. */
+  /** Jamais 100 tant que `remaining > 0` ou que la collecte n'a pas été réellement
+   *  transmise (voir le clamp ci-dessous) : le calcul hybride ne masque jamais une
+   *  réponse obligatoire manquante. */
   percent: number;
 };
 
 /**
- * Calcul centralisé, unique source de la progression affichée (remplace l'ancien
- * pourcentage fondé sur l'index de page) : additionne les exigences YouTube et Meta
- * réellement applicables compte tenu des réponses déjà données (Contenus n'a aucune
- * exigence obligatoire, donc ne contribue jamais au total).
+ * Barème du modèle hybride — 100 points au total, répartis par étape :
+ * - Introduction : 20 points dès sa consultation réelle (binaire).
+ * - YouTube / Meta : 20 points chacune, au prorata de leurs exigences applicables
+ *   satisfaites (continu — voir `youtubeRequirementSummary`/`metaRequirementSummary`).
+ * - Contenus (facultatif) : 10 points dès sa consultation, 20 seulement après
+ *   validation explicite (clic sur « Continuer vers Meta » — jamais la simple
+ *   consultation, voir `contenusSectionState`) — jamais additifs (10 *ou* 20).
+ * - Validation : 10 points dès sa consultation, 20 seulement après transmission
+ *   réussie (`submittedAt`) — jamais additifs, même logique que Contenus.
+ *
+ * Exemple attendu : tout satisfait mais pas encore transmis (Introduction 20 + YouTube
+ * 20 + Contenus 20 + Meta 20 + Validation consultée 10) = 90 % ; une fois transmis,
+ * Validation passe à 20 = 100 %.
  */
-export function collectionProgress(s: CollectionState): CollectionProgress {
+const WEIGHT_BINARY = 20;
+const WEIGHT_PROPORTIONAL = 20;
+const WEIGHT_VISITED_ONLY = 10;
+const WEIGHT_COMPLETED = 20;
+
+/**
+ * Calcul centralisé, unique source de la progression affichée — modèle hybride :
+ * remplace l'ancien calcul fondé uniquement sur les exigences YouTube/Meta (qui restait
+ * à 0 % tant qu'aucune de ces deux sections n'avait progressé, même après une lecture
+ * réelle de l'introduction). Les champs `*Visited`/`contenusCompleted` sont les mêmes
+ * signaux d'interface purs que `markVisited`/`markCompleted` dans le store — jamais
+ * dérivés des réponses elles-mêmes. Une simple consultation de Contenus ou de
+ * Validation ne suffit jamais à leur poids plein (voir le barème ci-dessus), pour ne
+ * jamais rendre artificiellement obligatoires les questions facultatives de Contenus
+ * tout en évitant qu'une simple ouverture de page gonfle la jauge comme une vraie
+ * validation.
+ */
+export function collectionProgress(
+  s: CollectionState,
+  progress: {
+    introductionVisited: boolean;
+    contenusVisited: boolean;
+    contenusCompleted: boolean;
+    validationVisited: boolean;
+  },
+): CollectionProgress {
   const yt = youtubeRequirementSummary(s);
   const meta = metaRequirementSummary(s);
-  const applicable = yt.applicable + meta.applicable;
-  const satisfied = yt.satisfied + meta.satisfied;
+  const { applicable, satisfied } = requirementTotals(s);
   const remaining = applicable - satisfied;
-  const rawPercent = applicable === 0 ? 100 : Math.floor((satisfied / applicable) * 100);
-  const percent = remaining > 0 ? Math.min(rawPercent, 99) : 100;
+  const submitted = s.submittedAt !== null;
+
+  const introPoints = progress.introductionVisited ? WEIGHT_BINARY : 0;
+  const ytPoints = yt.applicable > 0 ? WEIGHT_PROPORTIONAL * (yt.satisfied / yt.applicable) : 0;
+  const contenusPoints = progress.contenusCompleted
+    ? WEIGHT_COMPLETED
+    : progress.contenusVisited
+      ? WEIGHT_VISITED_ONLY
+      : 0;
+  const metaPoints = meta.applicable > 0 ? WEIGHT_PROPORTIONAL * (meta.satisfied / meta.applicable) : 0;
+  const validationPoints = submitted
+    ? WEIGHT_COMPLETED
+    : progress.validationVisited
+      ? WEIGHT_VISITED_ONLY
+      : 0;
+
+  const rawPercent = Math.floor(introPoints + ytPoints + contenusPoints + metaPoints + validationPoints);
+  const percent = submitted && remaining === 0 ? 100 : Math.min(rawPercent, 99);
   return { applicable, satisfied, remaining, percent };
 }
 
@@ -521,46 +583,43 @@ export function metaSectionState(s: CollectionState, attemptedInvalid: boolean):
 
 /**
  * Contenus : aucune exigence obligatoire n'y bloque jamais rien (voir `contenusSummary`
- * plus haut, toutes optionnelles) — il n'existe donc pas de notion de section
- * « incomplète » à corriger ici. Le statut ne peut refléter qu'une interaction ou son
- * absence, jamais un index de page.
+ * plus haut, toutes optionnelles), donc pas de notion de section « à corriger » ici —
+ * mais une simple consultation (`visited`) ne vaut pas validation. Comme ses questions
+ * sont facultatives, il n'existe pas de critère de complétion basé sur les réponses :
+ * l'étape ne devient « Terminée » qu'après un clic explicite sur « Continuer vers Meta »
+ * (`completed`, voir `markCompleted` dans le store) — ouvrir la page marque seulement
+ * « En cours ». Jamais déduit des réponses elles-mêmes ni d'un index de page.
  */
-export function contenusSectionState(s: CollectionState): SectionState {
-  const touched =
-    Boolean(str(s, K.contenus.membresVideos)) ||
-    Boolean(str(s, K.contenus.traffic)) ||
-    Boolean(str(s, K.contenus.newReturning)) ||
-    count(s, SLOT.guideVip) > 0 ||
-    count(s, SLOT.dixVideos) > 0 ||
-    bool(s, K.contenus.guideVipMissing) ||
-    bool(s, K.contenus.skipDixVideos);
-  return touched ? "done" : "not-started";
+export function contenusSectionState(visited: boolean, completed: boolean): SectionState {
+  if (completed) return "done";
+  return visited ? "in-progress" : "not-started";
 }
 
 /**
- * Introduction : page purement informative, sans réponse propre. « Terminée » dès que
- * la collecte a réellement progressé ailleurs (une exigence YouTube/Meta satisfaite,
- * ou une interaction Contenus) — jamais déduit de la position de la page courante.
+ * Introduction : page purement informative, sans réponse propre. « Terminée » dès sa
+ * consultation réelle (`visited`, même signal que `collectionProgress`) — jamais déduit
+ * de l'avancement d'une autre section ni de la position de la page courante.
  */
-export function introductionSectionState(s: CollectionState): SectionState {
-  const progressedElsewhere =
-    youtubeRequirementSummary(s).satisfied > 0 ||
-    metaRequirementSummary(s).satisfied > 0 ||
-    contenusSectionState(s) === "done";
-  return progressedElsewhere ? "done" : "not-started";
+export function introductionSectionState(visited: boolean): SectionState {
+  return visited ? "done" : "not-started";
 }
 
 /**
  * Validation : « Terminée » seulement une fois réellement transmise au serveur (voir
  * `state.submittedAt`) — avoir simplement rempli toutes les exigences ne suffit pas
- * tant que l'envoi n'a pas eu lieu.
+ * tant que l'envoi n'a pas eu lieu. « En cours » dépend d'avoir réellement consulté
+ * cette étape (`visited`, un signal d'interface pur — voir `markVisited` dans le
+ * store), jamais du seul avancement de YouTube/Meta : sans ce garde-fou, remplir une
+ * autre section suffisait à afficher « En cours » ici alors que Validation n'avait
+ * jamais été ouverte.
  */
 export function validationSectionState(
   s: CollectionState,
   attemptedInvalid: boolean,
+  visited: boolean,
 ): SectionState {
   if (s.submittedAt !== null) return "done";
-  const { satisfied, remaining } = collectionProgress(s);
-  if (remaining > 0 && attemptedInvalid) return "needs-correction";
-  return satisfied > 0 ? "in-progress" : "not-started";
+  const { applicable, satisfied } = requirementTotals(s);
+  if (applicable > satisfied && attemptedInvalid) return "needs-correction";
+  return visited ? "in-progress" : "not-started";
 }
