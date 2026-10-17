@@ -5,9 +5,9 @@ import { getRequest } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
- * Rate limiting persistant (table `rate_limits`, fen├¬tre glissante par palier).
- * Les workers ├®tant sans ├®tat, le compteur vit en base : une limite reste
- * effective quelle que soit l'instance qui re├ºoit la requ├¬te.
+ * Rate limiting persistant (table `rate_limits`, fenêtre glissante par palier).
+ * Les workers étant sans état, le compteur vit en base : une limite reste
+ * effective quelle que soit l'instance qui reçoit la requête.
  */
 
 export const RATE_LIMITS = {
@@ -15,7 +15,7 @@ export const RATE_LIMITS = {
   collectionLink: { limit: 10, windowSeconds: 600 },
   /** Validation d'un secret de lien de Strategic Review. */
   reviewLink: { limit: 10, windowSeconds: 600 },
-  /** Autosave des r├®ponses. */
+  /** Autosave des réponses. */
   autosave: { limit: 240, windowSeconds: 600 },
   /** Demande de ticket d'upload. */
   upload: { limit: 60, windowSeconds: 600 },
@@ -26,7 +26,7 @@ export const RATE_LIMITS = {
 export type RateLimitBucket = keyof typeof RATE_LIMITS;
 
 export class RateLimitError extends Error {
-  constructor(message = "Trop de tentatives. R├®essaie dans quelques minutes.") {
+  constructor(message = "Trop de tentatives. Réessaie dans quelques minutes.") {
     super(message);
   }
 }
@@ -35,7 +35,7 @@ function hash(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-/** Identifiant d'appelant : IP (hach├®e) et ├®ventuel discriminant applicatif. */
+/** Identifiant d'appelant : IP (hachée) et éventuel discriminant applicatif. */
 export function callerSubject(extra?: string | null): string {
   const req = getRequest();
   const ip =
@@ -46,9 +46,9 @@ export function callerSubject(extra?: string | null): string {
 }
 
 /**
- * Consomme un jeton. Retourne `false` si la limite est d├®pass├®e.
- * En cas d'indisponibilit├® du compteur, on n'interrompt pas le service (fail-open)
- * mais l'incident est trac├® : cf. docs/production-hardening.md (risque r├®siduel).
+ * Consomme un jeton. Retourne `false` si la limite est dépassée.
+ * En cas d'indisponibilité du compteur, on n'interrompt pas le service (fail-open)
+ * mais l'incident est tracé : cf. docs/production-hardening.md (risque résiduel).
  */
 export async function consumeRateLimit(
   bucket: RateLimitBucket,

@@ -1,4 +1,5 @@
 import { K, SLOT } from "./keys";
+import { confirmedFileCount, exclusiveChoicesFor, hasExclusiveConflict } from "./rules";
 import type { CollectionState } from "./types";
 
 /**
@@ -28,19 +29,14 @@ export const STATUS_LABEL: Record<ItemStatus, string> = {
   attente: "En attente",
 };
 
-const count = (s: CollectionState, slot: string) => (s.files[slot] ?? []).length;
 /**
- * Comme `count`, mais un fichier ne compte comme réellement transmis que s'il possède
- * un `remoteId` (confirmé côté serveur), n'est pas `pending` et ne porte aucune
- * `error` — réservé aux fonctions de blocage (`youtubeBlocker`/`metaBlocker`), qui
- * partagent ce module avec le serveur (`session.server.ts`). Un fichier local en
- * attente de confirmation de portée, neutralisé après un `SESSION_MISMATCH`, ou dont
- * l'import n'a simplement jamais été confirmé par le serveur, ne satisfait jamais ce
- * décompte, même s'il n'est ni `pending` ni en `error` à cet instant.
- * Les récapitulatifs d'affichage (`*Summary`) continuent d'utiliser `count` tel quel.
+ * Fichiers réellement transmis (confirmés côté serveur, ni en cours d'envoi ni en
+ * échec — voir `isFileConfirmed`). Seul décompte utilisé ici, aussi bien par les
+ * récapitulatifs que par les exigences obligatoires partagées avec le serveur : un
+ * fichier en attente ou en échec n'est jamais présenté comme « Transmis ».
  */
-const readyCount = (s: CollectionState, slot: string) =>
-  (s.files[slot] ?? []).filter((f) => Boolean(f.remoteId) && !f.pending && !f.error).length;
+const count = confirmedFileCount;
+const readyCount = confirmedFileCount;
 const bool = (s: CollectionState, key: string) => s.answers[key] === true;
 const str = (s: CollectionState, key: string) =>
   typeof s.answers[key] === "string" ? (s.answers[key] as string) : null;
@@ -82,8 +78,8 @@ export function youtubeSummary(s: CollectionState): SectionSummary {
 
   if (mode === "captures" || mode === "guide" || (mode === "export" && impossible)) {
     const captures: Array<[string, string, string]> = [
-      ["Capture Overview — Vue d'ensemble", SLOT.ytOverview, K.yt.missingOverview],
-      ["Capture Content — Contenu", SLOT.ytContent, K.yt.missingContent],
+      ["Capture Overview · Vue d'ensemble", SLOT.ytOverview, K.yt.missingOverview],
+      ["Capture Content · Contenu", SLOT.ytContent, K.yt.missingContent],
       ["Capture Audience", SLOT.ytAudience, K.yt.missingAudience],
     ];
     for (const [label, slot, missingKey] of captures) {
@@ -226,7 +222,7 @@ export function metaSummary(s: CollectionState): SectionSummary {
 
   const resultsCapture = count(s, SLOT.metaResults);
   items.push({
-    label: "Results — Résultats",
+    label: "Results · Résultats",
     status:
       results.length === 0
         ? bool(s, K.meta.resultsMissing)
@@ -296,13 +292,13 @@ function youtubeChecks(s: CollectionState): Check[] {
         id: "yt-capture-overview",
         slot: SLOT.ytOverview,
         missingKey: K.yt.missingOverview,
-        label: "Overview — Vue d'ensemble",
+        label: "Overview · Vue d'ensemble",
       },
       {
         id: "yt-capture-content",
         slot: SLOT.ytContent,
         missingKey: K.yt.missingContent,
-        label: "Content — Contenu",
+        label: "Content · Contenu",
       },
       {
         id: "yt-capture-audience",
@@ -329,6 +325,12 @@ function youtubeChecks(s: CollectionState): Check[] {
  * Chaque question marquée Obligatoire ou Conditionnelle est contrôlée dans l'ordre où
  * elle apparaît à l'écran.
  */
+/** Sélection enregistrée avant l'exclusivité de « Je ne sais pas » (voir
+ *  `EXCLUSIVE_CHOICES`) : bloquante, à corriger explicitement par l'utilisateur —
+ *  jamais tranchée à sa place. */
+const EXCLUSIVE_CONFLICT_MESSAGE =
+  "« Je ne sais pas » ne peut pas être combiné avec d'autres réponses : corrige ta sélection.";
+
 function metaChecks(s: CollectionState): Check[] {
   const checks: Check[] = [];
 
@@ -343,26 +345,37 @@ function metaChecks(s: CollectionState): Check[] {
   });
 
   const objectifs = arr(s, K.meta.objectifs);
+  const objectifsConflict = hasExclusiveConflict(objectifs, exclusiveChoicesFor(K.meta.objectifs));
   checks.push({
     id: "meta-objectifs",
     message:
       objectifs.length === 0
         ? "Sélectionne au moins un objectif de campagne Meta."
-        : "Précise l'autre objectif de campagne sélectionné.",
+        : objectifsConflict
+          ? EXCLUSIVE_CONFLICT_MESSAGE
+          : "Précise l'autre objectif de campagne sélectionné.",
     satisfied:
       objectifs.length > 0 &&
+      !objectifsConflict &&
       !(objectifs.includes("autre") && !(str(s, K.meta.objectifAutre) ?? "").trim()),
   });
 
   const destinations = arr(s, K.meta.destination);
+  const destinationsConflict = hasExclusiveConflict(
+    destinations,
+    exclusiveChoicesFor(K.meta.destination),
+  );
   checks.push({
     id: "meta-destination",
     message:
       destinations.length === 0
         ? "Sélectionne au moins une destination après le clic."
-        : "Précise l'autre destination sélectionnée.",
+        : destinationsConflict
+          ? EXCLUSIVE_CONFLICT_MESSAGE
+          : "Précise l'autre destination sélectionnée.",
     satisfied:
       destinations.length > 0 &&
+      !destinationsConflict &&
       !(destinations.includes("autre-page") && !(str(s, K.meta.destinationAutre) ?? "").trim()),
   });
 
@@ -394,6 +407,7 @@ function metaChecks(s: CollectionState): Check[] {
   const results = arr(s, K.meta.results);
   const resultsMissing = bool(s, K.meta.resultsMissing);
   if (!resultsMissing) {
+    const conflict = hasExclusiveConflict(results, exclusiveChoicesFor(K.meta.results));
     const autreOk = !(results.includes("autre") && !(str(s, K.meta.resultsAutre) ?? "").trim());
     const inconnuOk = !(results.includes("inconnu") && readyCount(s, SLOT.metaResults) === 0);
     checks.push({
@@ -401,10 +415,12 @@ function metaChecks(s: CollectionState): Check[] {
       message:
         results.length === 0
           ? "Indique ce que compte la colonne Results, ou indique que tu ne trouves pas cette donnée."
-          : !autreOk
-            ? "Précise ce que compte la colonne Results."
-            : "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée.",
-      satisfied: results.length > 0 && autreOk && inconnuOk,
+          : conflict
+            ? EXCLUSIVE_CONFLICT_MESSAGE
+            : !autreOk
+              ? "Précise ce que compte la colonne Results."
+              : "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée.",
+      satisfied: results.length > 0 && !conflict && autreOk && inconnuOk,
     });
   }
 

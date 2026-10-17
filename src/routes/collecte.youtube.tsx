@@ -7,13 +7,14 @@ import { Disclosure } from "@/components/Disclosure";
 import { ErrorSummary } from "@/components/ErrorSummary";
 import { FileUploader } from "@/components/FileUploader";
 import { MetricCard } from "@/components/MetricCard";
+import { MissingToggle } from "@/components/MissingToggle";
 import { NavigationFooter } from "@/components/NavigationFooter";
-import { OptionToggle } from "@/components/OptionToggle";
 import { PathHint, ThreeSeconds, WhyNote } from "@/components/PathHint";
 import { QuestionCard } from "@/components/QuestionCard";
 import { SawazCallout } from "@/components/SawazCallout";
 import { StepLayout } from "@/components/StepLayout";
 import { K, SLOT } from "@/lib/collection/keys";
+import { confirmedFileCount } from "@/lib/collection/rules";
 import { youtubeBlocker, youtubeIssues } from "@/lib/collection/status";
 import {
   useBoolAnswer,
@@ -27,13 +28,13 @@ import { stepNeighbours } from "@/lib/steps";
 export const Route = createFileRoute("/collecte/youtube")({
   head: () => ({
     meta: [
-      { title: "YouTube — Comprendre la qualité de l'audience | LFTC" },
+      { title: "YouTube · Comprendre la qualité de l'audience | LFTC" },
       {
         name: "description",
         content:
           "Transmets tes données YouTube Studio sur 365 jours : export CSV, captures Overview, Content et Audience, avec le lexique expliqué simplement.",
       },
-      { property: "og:title", content: "YouTube — Comprendre la qualité de l'audience" },
+      { property: "og:title", content: "YouTube · Comprendre la qualité de l'audience" },
       {
         property: "og:description",
         content: "Export ou captures YouTube Studio sur 365 derniers jours pour LFTC.",
@@ -48,19 +49,19 @@ export const Route = createFileRoute("/collecte/youtube")({
 const captures = [
   {
     id: "yt-capture-overview",
-    title: "Overview — Vue d'ensemble",
+    title: "Overview · Vue d'ensemble",
     slot: SLOT.ytOverview,
     missingKey: K.yt.missingOverview,
-    path: ["YouTube Studio", "Analytics", "Overview — Vue d'ensemble"],
+    path: ["YouTube Studio", "Analytics", "Overview · Vue d'ensemble"],
     seconds: "Une vue globale des performances de ta chaîne.",
     why: "Pour comprendre la performance générale de YouTube sur la période.",
   },
   {
     id: "yt-capture-content",
-    title: "Content — Contenu",
+    title: "Content · Contenu",
     slot: SLOT.ytContent,
     missingKey: K.yt.missingContent,
-    path: ["YouTube Studio", "Analytics", "Content — Contenu"],
+    path: ["YouTube Studio", "Analytics", "Content · Contenu"],
     seconds: "L'écran qui montre comment tes contenus sont exposés et consommés.",
     why: "Pour observer notamment les vues, impressions et clics.",
   },
@@ -77,7 +78,7 @@ const captures = [
 
 const lexique = [
   {
-    term: "Views — Vues",
+    term: "Views · Vues",
     meaning: "Combien de fois tes contenus ont réellement été regardés ?",
     why: "Pour mesurer le volume d'attention généré par YouTube.",
   },
@@ -87,22 +88,22 @@ const lexique = [
     why: "Pour savoir quelle exposition YouTube accorde réellement à LFTC.",
   },
   {
-    term: "CTR — Click-Through Rate (taux de clic)",
+    term: "CTR · Click-Through Rate (taux de clic)",
     meaning: "Quand YouTube montre ta miniature, combien de personnes cliquent ?",
     why: "Pour mesurer l'efficacité du duo titre + miniature.",
   },
   {
-    term: "Watch Time — Temps de visionnage",
+    term: "Watch Time · Temps de visionnage",
     meaning: "Combien de temps les spectateurs passent-ils réellement devant tes vidéos ?",
     why: "Un clic n'a de valeur que si la personne reste.",
   },
   {
-    term: "Average View Duration — Durée moyenne de visionnage",
+    term: "Average View Duration · Durée moyenne de visionnage",
     meaning: "Pendant combien de temps regarde-t-on une vidéo en moyenne ?",
     why: "Pour comparer la capacité des différents formats à retenir l'attention.",
   },
   {
-    term: "Audience Retention — Rétention d'audience",
+    term: "Audience Retention · Rétention d'audience",
     meaning: "À quel moment les spectateurs commencent-ils à quitter une vidéo ?",
     why: "Pour identifier précisément les passages qui maintiennent ou font perdre l'attention.",
   },
@@ -113,7 +114,7 @@ function YoutubeScreen() {
   const { state, setAnswer, markAttempted, markVisited } = useCollection();
   useStepAccessGuard("youtube");
   const [mode, setMode] = useSingleChoice(K.yt.mode);
-  const [exportImpossible, toggleExportImpossible] = useBoolAnswer(K.yt.exportImpossible);
+  const [exportImpossible] = useBoolAnswer(K.yt.exportImpossible);
   const blocker = youtubeBlocker(state);
   const issues = youtubeIssues(state);
   const [showErrors, setShowErrors] = useState(false);
@@ -147,7 +148,7 @@ function YoutubeScreen() {
   return (
     <StepLayout
       step="youtube"
-      title="YouTube — Comprendre la qualité de l'audience"
+      title="YouTube · Comprendre la qualité de l'audience"
       intro="Tu nous as indiqué que YouTube semble t'apporter moins de volume que Meta, mais des personnes plus qualitatives. Nous allons vérifier cette intuition."
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
@@ -199,6 +200,9 @@ function YoutubeScreen() {
           label="Méthode de transmission YouTube"
           value={mode}
           onChange={(v) => {
+            // Re-cliquer sur la méthode déjà choisie ne change rien : seul un vrai
+            // changement de méthode réinitialise « export impossible ».
+            if (v === mode) return;
             setMode(v);
             setAnswer(K.yt.exportImpossible, false);
           }}
@@ -211,7 +215,7 @@ function YoutubeScreen() {
             { value: "captures", label: "Je préfère envoyer des captures d'écran", icon: <Camera /> },
             {
               value: "guide",
-              label: "Je ne sais pas encore — guidez-moi étape par étape",
+              label: "Je ne sais pas encore : guidez-moi étape par étape",
               icon: <HelpCircle />,
             },
           ]}
@@ -225,16 +229,16 @@ function YoutubeScreen() {
           number="Option recommandée"
           status="conditional"
           error={
-            showErrors && (state.files[SLOT.ytExport]?.length ?? 0) === 0
+            showErrors && confirmedFileCount(state, SLOT.ytExport) === 0
               ? "Ajoute l’export YouTube ou coche « Je n’arrive finalement pas à exporter »."
               : undefined
           }
-          title="Option recommandée — Export YouTube"
-          description="Dans YouTube Studio → Analytics, cherche : Advanced Mode — Mode avancé, puis l'option permettant d'exporter les données. Sélectionne idéalement 365 derniers jours. Puis télécharge le fichier disponible en CSV ou Excel."
+          title="Option recommandée · Export YouTube"
+          description="Dans YouTube Studio → Analytics, cherche : Advanced Mode · Mode avancé, puis l'option permettant d'exporter les données. Sélectionne idéalement 365 derniers jours. Puis télécharge le fichier disponible en CSV ou Excel."
         >
           <div className="space-y-4">
             <PathHint
-              steps={["YouTube Studio", "Analytics", "Advanced Mode — Mode avancé", "Export"]}
+              steps={["YouTube Studio", "Analytics", "Advanced Mode · Mode avancé", "Export"]}
             />
             <p className="text-sm leading-relaxed text-sawaz">
               <span className="font-semibold">Pourquoi l'export ? </span>
@@ -247,10 +251,9 @@ function YoutubeScreen() {
               hint="Formats acceptés : CSV, XLS, XLSX"
               accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             />
-            <OptionToggle
+            <MissingToggle
+              flagKey={K.yt.exportImpossible}
               label="Je n'arrive finalement pas à exporter"
-              checked={exportImpossible}
-              onToggle={toggleExportImpossible}
             />
           </div>
         </QuestionCard>
@@ -293,7 +296,7 @@ function YoutubeScreen() {
               status="conditional"
               error={
                 showErrors &&
-                (state.files[capture.slot]?.length ?? 0) === 0 &&
+                confirmedFileCount(state, capture.slot) === 0 &&
                 state.answers[capture.missingKey] !== true
                   ? "Ajoute cette capture ou indique que tu ne trouves pas cet écran."
                   : undefined
@@ -309,13 +312,7 @@ function YoutubeScreen() {
                   label={`Dépose ta capture · ${capture.title}`}
                   accept="image/*,.pdf"
                 />
-                <OptionToggle
-                  label="Je ne trouve pas cet écran"
-                  checked={state.answers[capture.missingKey] === true}
-                  onToggle={() =>
-                    setAnswer(capture.missingKey, !(state.answers[capture.missingKey] === true))
-                  }
-                />
+                <MissingToggle flagKey={capture.missingKey} label="Je ne trouve pas cet écran" />
               </div>
             </QuestionCard>
           ))}

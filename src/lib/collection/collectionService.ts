@@ -8,6 +8,7 @@ import {
   requestFileUpload,
   saveCollectionAnswers,
   submitCollection,
+  type CollectionErrorCode,
   type ConfirmUploadResult,
 } from "./collection.functions";
 import type { RemoteFile } from "./remote-types";
@@ -48,6 +49,18 @@ function progressStorageKey(scopeId: string) {
 }
 
 export type PersistedStepProgress = { visited: string[]; completed: string[] };
+
+/**
+ * Réponses saisies localement mais pas encore confirmées par le serveur, par portée.
+ * Contrairement au cache d'affichage ci-dessus, ce stockage est relu à la reprise
+ * (rechargement, fermeture, reconnexion) pour renvoyer ces réponses au lieu de les
+ * laisser silencieusement écrasées par l'état serveur (voir `store.tsx`).
+ */
+const UNCONFIRMED_STORAGE_PREFIX = "sawaz.lftc.collecte.unconfirmed.v1";
+
+function unconfirmedStorageKey(scopeId: string) {
+  return `${UNCONFIRMED_STORAGE_PREFIX}.${scopeId}`;
+}
 
 /**
  * Pointeur de portée « optimiste », propre à cet onglet (`sessionStorage`, jamais
@@ -132,6 +145,33 @@ export const collectionService = {
   clearProgress(scopeId: string) {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(progressStorageKey(scopeId));
+  },
+
+  /** Réponses non confirmées persistées pour cette portée (vide si absentes). */
+  loadUnconfirmed(scopeId: string): Record<string, AnswerValue> {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(unconfirmedStorageKey(scopeId));
+      if (!raw) return {};
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+      return parsed as Record<string, AnswerValue>;
+    } catch {
+      return {};
+    }
+  },
+
+  saveUnconfirmed(scopeId: string, answers: Record<string, AnswerValue>) {
+    if (typeof window === "undefined") return;
+    try {
+      if (Object.keys(answers).length === 0) {
+        window.localStorage.removeItem(unconfirmedStorageKey(scopeId));
+      } else {
+        window.localStorage.setItem(unconfirmedStorageKey(scopeId), JSON.stringify(answers));
+      }
+    } catch {
+      /* quota ou mode privé : on ignore silencieusement */
+    }
   },
 
   /** Lit le pointeur de portée optimiste de cet onglet, s'il existe. */
@@ -319,8 +359,7 @@ export const collectionService = {
   async submit(
     expected: ExpectedScope,
   ): Promise<
-    | { ok: true; submittedAt: number }
-    | { ok: false; error: string; code?: "SESSION_MISMATCH" }
+    { ok: true; submittedAt: number } | { ok: false; error: string; code?: CollectionErrorCode }
   > {
     const res = await submitCollection({
       data: {
@@ -329,7 +368,11 @@ export const collectionService = {
       },
     });
     if (!res.ok) return res;
-    return { ok: true, submittedAt: new Date(res.data.submittedAt).getTime() };
+    // Le serveur écrit toujours `submitted_at` ; une valeur absente ne peut venir que
+    // d'une submission figée avant ce correctif — on affiche alors l'heure de
+    // confirmation plutôt qu'une date invalide (1970).
+    const at = res.data.submittedAt ? new Date(res.data.submittedAt).getTime() : Number.NaN;
+    return { ok: true, submittedAt: Number.isFinite(at) ? at : Date.now() };
   },
 };
 

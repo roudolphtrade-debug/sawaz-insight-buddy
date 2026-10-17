@@ -96,6 +96,21 @@ export class SessionError extends Error {
 }
 
 /**
+ * Accès refusé par le lien ou la session eux-mêmes (absents, invalides, expirés,
+ * révoqués, épuisés) — distinct d'une panne réseau ou serveur : l'interface doit
+ * bloquer la collecte et inviter à rouvrir un lien valide, jamais proposer un « mode
+ * hors ligne ». Le motif précis reste uniquement dans le message serveur.
+ */
+export class LinkAccessError extends SessionError {
+  override name = "LinkAccessError";
+}
+
+/** Écriture refusée parce que la submission est déjà transmise (données figées). */
+export class SubmissionLockedError extends SessionError {
+  override name = "SubmissionLockedError";
+}
+
+/**
  * Le client confirme une portée exactement une fois (voir `store.tsx`), puis la
  * retransmet à chaque opération mutante. Ce n'est jamais la source de vérité — la
  * session `HttpOnly` et la soumission réellement active le restent — mais un onglet
@@ -108,7 +123,7 @@ export type ExpectedScope = { collectionId: string; submissionId: string };
 export class SessionMismatchError extends Error {
   override name = "SessionMismatchError";
   constructor() {
-    super("Session changée — rouvrez le lien de cette collecte.");
+    super("Session changée : rouvrez le lien de cette collecte.");
   }
 }
 
@@ -137,15 +152,18 @@ export async function openLinkSession(token: string): Promise<LinkSession> {
     .eq("scope", "collection")
     .maybeSingle();
 
-  if (error || !link) {
+  // Une erreur de lecture est une panne (réessayable), jamais un refus du lien : seul
+  // un lien réellement introuvable bascule l'interface en « lien plus actif ».
+  if (error) throw new Error(`secure_links: ${error.message}`);
+  if (!link) {
     logSecurityEvent("collection", "link.invalid_token");
-    throw new SessionError("Lien invalide");
+    throw new LinkAccessError("Lien invalide");
   }
-  if (link.revoked_at) throw new SessionError("Lien révoqué");
+  if (link.revoked_at) throw new LinkAccessError("Lien révoqué");
   if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
-    throw new SessionError("Lien expiré");
+    throw new LinkAccessError("Lien expiré");
   }
-  if (link.use_count >= link.max_uses) throw new SessionError("Lien épuisé");
+  if (link.use_count >= link.max_uses) throw new LinkAccessError("Lien épuisé");
 
   const secret = newSessionSecret();
   const expiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 3600 * 1000).toISOString();
@@ -182,7 +200,7 @@ export async function openLinkSession(token: string): Promise<LinkSession> {
 /** Résout la session courante depuis le cookie httpOnly. */
 export async function requireLinkSession(): Promise<LinkSession> {
   const secret = readCookie(LINK_SESSION_COOKIE);
-  if (!secret) throw new SessionError("Aucune session de collecte");
+  if (!secret) throw new LinkAccessError("Aucune session de collecte");
 
   const { data, error } = await supabaseAdmin
     .from("link_sessions")
@@ -192,9 +210,11 @@ export async function requireLinkSession(): Promise<LinkSession> {
     .eq("session_token_hash", sha256(secret))
     .maybeSingle();
 
-  if (error || !data) throw new SessionError("Session invalide");
-  if (data.revoked_at) throw new SessionError("Session révoquée");
-  if (new Date(data.expires_at).getTime() < Date.now()) throw new SessionError("Session expirée");
+  // Même distinction que pour le lien : panne de lecture ≠ session inexistante.
+  if (error) throw new Error(`link_sessions: ${error.message}`);
+  if (!data) throw new LinkAccessError("Session invalide");
+  if (data.revoked_at) throw new LinkAccessError("Session révoquée");
+  if (new Date(data.expires_at).getTime() < Date.now()) throw new LinkAccessError("Session expirée");
 
   const link = data.secure_links as unknown as {
     id: string;
@@ -203,9 +223,9 @@ export async function requireLinkSession(): Promise<LinkSession> {
     revoked_at: string | null;
     expires_at: string | null;
   };
-  if (link.revoked_at) throw new SessionError("Lien révoqué");
+  if (link.revoked_at) throw new LinkAccessError("Lien révoqué");
   if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
-    throw new SessionError("Lien expiré");
+    throw new LinkAccessError("Lien expiré");
   }
 
   return {
@@ -262,6 +282,7 @@ export function safeName(name: string) {
 import type { AnswerValue } from "./types";
 import type { RemoteFile, RemoteSnapshot } from "./remote-types";
 import { stateFromSnapshot } from "./snapshot";
+import { missingFlagCorrections } from "./rules";
 import { metaBlocker, youtubeBlocker } from "./status";
 
 export async function buildSnapshot(session: LinkSession): Promise<RemoteSnapshot> {
@@ -308,7 +329,7 @@ export async function buildSnapshot(session: LinkSession): Promise<RemoteSnapsho
 async function requireWorkingSubmission(session: LinkSession) {
   const submission = await getOrCreateSubmission(session);
   if (submission.status === "submitted") {
-    throw new SessionError("Collecte déjà envoyée : les données sont figées");
+    throw new SubmissionLockedError("Collecte déjà envoyée : les données sont figées");
   }
   return submission;
 }
@@ -565,10 +586,15 @@ export async function removeFile(session: LinkSession, fileId: string, expected:
 }
 
 /**
- * Applique côté serveur exactement les mêmes règles obligatoires que
- * l'interface (`youtubeBlocker` / `metaBlocker` dans `./status`), puis
- * passage atomique à `submitted`. Les deux validations partagent la même
- * source pour ne jamais diverger.
+ * Transmission finale, dans cet ordre :
+ * 1. normalisation des contradictions critiques (indicateur « introuvable » contredit
+ *    par un fichier confirmé), persistée comme toute réponse ;
+ * 2. mêmes règles obligatoires que l'interface (`youtubeBlocker` / `metaBlocker` dans
+ *    `./status`, source unique partagée) ;
+ * 3. un seul UPDATE conditionnel (`status = 'working'`) qui écrit ensemble `status`,
+ *    `submitted_at` et le snapshot figé : aucun état intermédiaire où la submission
+ *    serait `submitted` sans horodatage ni snapshot. `submitted_at` est écrit
+ *    explicitement — aucune valeur par défaut ni trigger n'est supposé en base.
  */
 export async function submitCurrentSubmission(session: LinkSession, expected: ExpectedScope) {
   await enforceRateLimit("submit", callerSubject(session.sessionId));
@@ -576,12 +602,24 @@ export async function submitCurrentSubmission(session: LinkSession, expected: Ex
   const submission = await getOrCreateSubmission(session);
   assertExpectedSubmission(submission, expected);
   if (submission.status === "submitted") {
-    return { ok: true as const, data: { submittedAt: submission.submitted_at as string } };
+    return { ok: true as const, data: { submittedAt: submission.submitted_at } };
   }
 
   const snapshot = await buildSnapshot(session);
-  const state = stateFromSnapshot(snapshot);
 
+  const corrections = missingFlagCorrections(stateFromSnapshot(snapshot));
+  const correctedKeys = Object.keys(corrections);
+  if (correctedKeys.length > 0) {
+    const { error: fixError } = await supabaseAdmin
+      .from("answers")
+      .update({ value: false as never, not_found: false })
+      .eq("submission_id", submission.id)
+      .in("question_key", correctedKeys);
+    if (fixError) return { ok: false as const, error: "Envoi impossible" };
+    snapshot.answers = { ...snapshot.answers, ...corrections };
+  }
+
+  const state = stateFromSnapshot(snapshot);
   const problems = [youtubeBlocker(state), metaBlocker(state)].filter(
     (message): message is string => message !== null,
   );
@@ -589,15 +627,18 @@ export async function submitCurrentSubmission(session: LinkSession, expected: Ex
     return { ok: false as const, error: problems.join(" ") };
   }
 
+  const submittedAt = new Date().toISOString();
+  const frozen: RemoteSnapshot = { ...snapshot, status: "submitted", submittedAt };
+
   const { data, error } = await supabaseAdmin
     .from("submissions")
-    .update({ status: "submitted", snapshot: snapshot as never })
+    .update({ status: "submitted", submitted_at: submittedAt, snapshot: frozen as never })
     .eq("id", submission.id)
     .eq("status", "working")
-    .select("submitted_at")
+    .select("status, submitted_at")
     .maybeSingle();
 
-  if (error || !data?.submitted_at) {
+  if (error || data?.status !== "submitted" || !data.submitted_at) {
     // Aucune ligne mise à jour : soit une confirmation concurrente a déjà fait passer
     // cette submission à `submitted` entre notre lecture et cet UPDATE conditionnel, soit
     // l'écriture a échoué pour une autre raison. On relit l'état réel avant de trancher,
@@ -626,7 +667,7 @@ export async function submitCurrentSubmission(session: LinkSession, expected: Ex
     action: "collection.submitted",
     entity_type: "submission",
     entity_id: submission.id,
-    metadata: { files: snapshot.files.length } as never,
+    metadata: { files: frozen.files.length, normalized: correctedKeys.length } as never,
   });
 
   return { ok: true as const, data: { submittedAt: data.submitted_at } };

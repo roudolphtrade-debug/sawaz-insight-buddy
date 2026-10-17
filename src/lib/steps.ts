@@ -16,7 +16,7 @@ export const STEPS: Step[] = [
     label: "Introduction",
     shortLabel: "Intro",
     to: "/collecte/",
-    summary: "Phase 1 · Étape 2 — première vague de données YouTube + Meta.",
+    summary: "Phase 1 · Étape 2 - première vague de données YouTube + Meta.",
   },
   {
     id: "youtube",

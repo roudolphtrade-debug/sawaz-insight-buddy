@@ -10,6 +10,8 @@ import {
 } from "react";
 
 import { collectionService, type ExpectedScope } from "./collectionService";
+import { remainingUnconfirmed, replayUnconfirmedAnswers, withoutStaleTransfers } from "./reconcile";
+import { exclusiveChoicesFor, missingFlagCorrections, toggleMultiChoice } from "./rules";
 import { emptyState, type AnswerValue, type CollectionState, type FileMeta } from "./types";
 import { STEPS, type StepId } from "@/lib/steps";
 
@@ -29,7 +31,9 @@ export type RemoteStatus = "idle" | "syncing" | "online" | "offline" | "submitte
  */
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-export type FlushResult = { ok: true } | { ok: false; error: string; code?: "SESSION_MISMATCH" };
+export type FlushResult =
+  | { ok: true }
+  | { ok: false; error: string; code?: "SESSION_MISMATCH" | "SESSION_INVALID" };
 
 /**
  * Résultat synchrone d'une tentative de suppression de fichier :
@@ -38,9 +42,12 @@ export type FlushResult = { ok: true } | { ok: false; error: string; code?: "SES
  * - "deferred" : rien tenté — hors ligne ou portée pas encore confirmée, à retenter
  *   plus tard ;
  * - "blocked" : session en décalage (`SESSION_MISMATCH`), déjà signalée globalement ;
- * - "not-found" : rien à faire, ce fichier n'est déjà plus dans l'état local.
+ * - "not-found" : rien à faire, ce fichier n'est déjà plus dans l'état local ;
+ * - "busy" : envoi (ou suppression) en cours pour ce fichier — la suppression n'est
+ *   possible qu'une fois l'opération terminée, pour qu'un envoi déjà parti ne puisse
+ *   jamais réapparaître ensuite comme fichier valide après sa « suppression ».
  */
-export type RemoveFileOutcome = "removed" | "deferred" | "blocked" | "not-found";
+export type RemoveFileOutcome = "removed" | "deferred" | "blocked" | "not-found" | "busy";
 
 /**
  * Portée (collecte + soumission) du cache actuellement affiché, vis-à-vis du serveur :
@@ -53,8 +60,13 @@ export type RemoveFileOutcome = "removed" | "deferred" | "blocked" | "not-found"
  * - "mismatch" : le serveur a répondu avec une portée différente de celle affichée
  *   (pointeur `sessionStorage` obsolète) — état terminal, écritures bloquées, l'état
  *   optimiste affiché est effacé, la session doit être rouverte via un lien à jour.
+ * - "invalid" : le serveur refuse le lien ou la session eux-mêmes (absents, expirés,
+ *   révoqués, épuisés) — état terminal distinct du hors ligne : la collecte est
+ *   bloquée, rien ne laisse croire que les réponses seront enregistrées normalement.
+ *   Les réponses non confirmées restent persistées localement par portée et seront
+ *   renvoyées à la réouverture d'un lien valide pour cette même collecte.
  */
-export type ScopeStatus = "unconfirmed" | "offline" | "confirmed" | "mismatch";
+export type ScopeStatus = "unconfirmed" | "offline" | "confirmed" | "mismatch" | "invalid";
 
 type Ctx = {
   state: CollectionState;
@@ -68,6 +80,10 @@ type Ctx = {
    *  (ex. `collectionService.submit()` dans la page de validation) : bascule l'état
    *  de portée global sans jamais effacer les données non transmises. */
   reportSessionMismatch: () => void;
+  /** Équivalent de `reportSessionMismatch` pour un `SESSION_INVALID` reçu hors du store. */
+  reportSessionInvalid: () => void;
+  /** Collecte transmise : toute modification est bloquée (miroir du verrou serveur). */
+  readOnly: boolean;
   /** Portée confirmée à transmettre à un appel direct à `collectionService` hors du
    *  store (ex. la transmission finale) ; `null` tant qu'elle n'est pas confirmée. */
   getExpectedScope: () => ExpectedScope | null;
@@ -150,47 +166,58 @@ async function recoverInterruptedUploads(
   cached: CollectionState,
   next: CollectionState,
   expected: ExpectedScope,
-): Promise<{ state: CollectionState; sessionMismatch: boolean }> {
+): Promise<{ state: CollectionState; sessionMismatch: boolean; sessionInvalid: boolean }> {
   const pendingRecoveries: Array<{ slot: string; meta: FileMeta }> = [];
   for (const [slot, files] of Object.entries(cached.files)) {
     for (const meta of files) {
       if (meta.uploadPath && !meta.remoteId) pendingRecoveries.push({ slot, meta });
     }
   }
-  if (pendingRecoveries.length === 0) return { state: next, sessionMismatch: false };
+  if (pendingRecoveries.length === 0) {
+    return { state: next, sessionMismatch: false, sessionInvalid: false };
+  }
 
   const outcomes = await Promise.all(
     pendingRecoveries.map(async ({ slot, meta }) => {
-      const res = await collectionService.confirmUpload(
-        {
-          slot,
-          path: meta.uploadPath as string,
-          name: meta.name,
-          mime: meta.type,
-          size: meta.size,
-        },
-        expected,
-      );
+      const res = await collectionService
+        .confirmUpload(
+          {
+            slot,
+            path: meta.uploadPath as string,
+            name: meta.name,
+            mime: meta.type,
+            size: meta.size,
+          },
+          expected,
+        )
+        // Panne réseau pendant la reprise : erreur temporaire de ce fichier, jamais un
+        // échec de toute l'hydratation.
+        .catch(() => ({ ok: false as const, error: "Envoi impossible, réessaie" }));
       if (res.ok) {
         const entry: FileMeta = {
           ...meta,
           remoteId: res.data.id,
           pending: false,
+          removing: false,
           error: undefined,
           errorReason: undefined,
         };
-        return { slot, entry, mismatch: false };
+        return { slot, entry, mismatch: false, invalid: false };
       }
       if ("code" in res && res.code === "SESSION_MISMATCH") {
-        return { slot, entry: meta, mismatch: true };
+        return { slot, entry: meta, mismatch: true, invalid: false };
+      }
+      if ("code" in res && res.code === "SESSION_INVALID") {
+        return { slot, entry: meta, mismatch: false, invalid: true };
       }
       const entry: FileMeta = {
         ...meta,
         pending: false,
+        removing: false,
         error: res.error,
-        errorReason: res.reason ?? "temporary",
+        errorReason: ("reason" in res ? res.reason : undefined) ?? "temporary",
       };
-      return { slot, entry, mismatch: false };
+      return { slot, entry, mismatch: false, invalid: false };
     }),
   );
 
@@ -201,7 +228,23 @@ async function recoverInterruptedUploads(
     files[slot] = [...existing, entry];
   }
 
-  return { state: { ...next, files }, sessionMismatch: outcomes.some((o) => o.mismatch) };
+  return {
+    state: { ...next, files },
+    sessionMismatch: outcomes.some((o) => o.mismatch),
+    sessionInvalid: outcomes.some((o) => o.invalid),
+  };
+}
+
+type SnapshotResult = Awaited<ReturnType<typeof collectionService.snapshot>>;
+
+/** Une panne réseau (exception) n'est jamais confondue avec un refus du serveur : elle
+ *  devient un échec sans code, traité comme « hors ligne ». */
+async function callSafely(call: () => Promise<SnapshotResult>): Promise<SnapshotResult> {
+  try {
+    return await call();
+  } catch {
+    return { ok: false, error: "Connexion impossible" };
+  }
 }
 
 export function CollectionProvider({ children }: { children: ReactNode }) {
@@ -265,6 +308,20 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   /** Référence stable vers la reprise des imports de fichiers mis en file pendant que
    *  la portée n'était pas encore confirmée — déclenchée dès la confirmation. */
   const flushQueuedFileUploadsRef = useRef<(() => void) | undefined>(undefined);
+  /** Réponses saisies localement et pas encore confirmées par le serveur (en file ou en
+   *  cours d'envoi), persistées par portée (`collectionService.saveUnconfirmed`) pour
+   *  être renvoyées après un rechargement, une fermeture ou une reconnexion. */
+  const unconfirmedRef = useRef<Record<string, AnswerValue>>({});
+  /** Pointeur de portée optimiste lu à l'hydratation : permet de persister les réponses
+   *  non confirmées avant même la confirmation serveur (même onglet, même portée). */
+  const pointerScopeIdRef = useRef<string | null>(null);
+
+  /** Persiste la liste courante des réponses non confirmées pour la portée connue. */
+  const persistUnconfirmed = useCallback(() => {
+    const scopeId = scopeIdRef.current ?? pointerScopeIdRef.current;
+    if (!scopeId) return;
+    collectionService.saveUnconfirmed(scopeId, unconfirmedRef.current);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -294,7 +351,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
    *   toujours mises à jour (sans effet observable, mais sans besoin de garde).
    */
   const handleSessionMismatch = useCallback((options?: { wipeDisplay?: boolean }) => {
-    if (scopeStatusRef.current === "mismatch") return;
+    if (scopeStatusRef.current === "mismatch" || scopeStatusRef.current === "invalid") return;
     scopeConfirmedRef.current = false;
     scopeStatusRef.current = "mismatch";
     scopeIdRef.current = null;
@@ -321,6 +378,31 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
+   * Le serveur refuse le lien ou la session (`SESSION_INVALID`) : état terminal, toute
+   * écriture et toute reprise automatique s'arrêtent. Contrairement au décalage de
+   * portée, l'affichage n'est pas effacé et les réponses non confirmées restent
+   * persistées localement pour cette portée — elles repartiront à la réouverture d'un
+   * lien valide de la même collecte. L'interface bloque la collecte (voir `collecte.tsx`).
+   */
+  const handleSessionInvalid = useCallback(() => {
+    if (scopeStatusRef.current === "invalid") return;
+    scopeConfirmedRef.current = false;
+    scopeStatusRef.current = "invalid";
+    expectedScopeRef.current = null;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    if (!mountedRef.current) return;
+    setScopeStatus("invalid");
+    setSaveStatus("idle");
+  }, []);
+
+  /**
    * Hydratation en deux temps :
    * 1. Si un pointeur de portée optimiste existe pour cet onglet (`sessionStorage`,
    *    écrit lors d'une confirmation précédente dans ce même onglet), le cache local
@@ -342,11 +424,20 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
 
     const sync = async () => {
       const pointerScopeId = collectionService.readScopePointer();
+      pointerScopeIdRef.current = pointerScopeId;
 
       // Affichage optimiste uniquement au tout premier passage : une reprise après
       // échec ne doit jamais écraser des saisies locales faites entre-temps.
       if (pointerScopeId && !hydratedRef.current) {
-        setState(collectionService.load(pointerScopeId));
+        const optimistic = collectionService.load(pointerScopeId);
+        // Réponses non confirmées d'une page précédente : réaffichées (jamais perdues
+        // de vue), mais envoyées seulement après confirmation de la portée.
+        const persisted = collectionService.loadUnconfirmed(pointerScopeId);
+        setState({
+          ...optimistic,
+          answers: { ...optimistic.answers, ...persisted },
+          files: withoutStaleTransfers(optimistic.files),
+        });
         const optimisticProgress = collectionService.loadProgress(pointerScopeId);
         setVisitedSteps(toStepIdSet(optimisticProgress.visited));
         setCompletedSteps(toStepIdSet(optimisticProgress.completed));
@@ -360,17 +451,25 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       const token = url.searchParams.get("t");
 
       let res = token
-        ? await collectionService.openLink(token)
-        : await collectionService.snapshot();
+        ? await callSafely(() => collectionService.openLink(token))
+        : await callSafely(() => collectionService.snapshot());
 
       // Le secret ne doit jamais rester dans l'URL ni dans l'historique.
       if (token) {
         url.searchParams.delete("t");
         window.history.replaceState({}, "", url.pathname + url.search + url.hash);
-        if (!res.ok) res = await collectionService.snapshot();
+        if (!res.ok) res = await callSafely(() => collectionService.snapshot());
       }
 
       if (cancelled) return;
+      if (!res.ok && "code" in res && res.code === "SESSION_INVALID") {
+        // Lien ou session refusés : jamais présenté comme un simple « hors ligne ».
+        setRemoteStatus("idle");
+        hydratedRef.current = true;
+        setHydrated(true);
+        handleSessionInvalid();
+        return;
+      }
       if (!res.ok) {
         onlineRef.current = false;
         setRemoteStatus("offline");
@@ -413,6 +512,24 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       const next = collectionService.fromSnapshot(res.data);
       const recovered = await recoverInterruptedUploads(cached, next, expected);
       if (cancelled) return;
+
+      const alreadySubmitted = res.data.status === "submitted";
+      if (alreadySubmitted) {
+        // Données figées côté serveur : des réponses locales jamais confirmées ne
+        // pourront plus être enregistrées, elles ne sont ni rejouées ni conservées.
+        pendingAnswers.current = {};
+        unconfirmedRef.current = {};
+      } else {
+        // Reprise : les réponses non confirmées persistées (page précédente,
+        // fermeture, reconnexion) rejoignent la file d'envoi au lieu d'être écrasées
+        // silencieusement par la valeur serveur ; la saisie en mémoire de cette page
+        // reste prioritaire. Calculé hors de `setState` (mise à jour pure).
+        const persisted = collectionService.loadUnconfirmed(authoritativeScopeId);
+        pendingAnswers.current = replayUnconfirmedAnswers(persisted, pendingAnswers.current);
+        unconfirmedRef.current = replayUnconfirmedAnswers(persisted, unconfirmedRef.current);
+      }
+      persistUnconfirmed();
+
       setState((prev) => {
         // Réponses/fichiers saisis ou ajoutés localement pendant que les écritures
         // distantes étaient encore bloquées : ni envoyés (gardés par `pendingAnswers`
@@ -456,7 +573,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
             if (isDuplicate) continue;
             presentKeys.add(`id:${f.id}`);
             if (f.uploadPath) presentKeys.add(`uploadPath:${f.uploadPath}`);
-            neverSent.push(f);
+            // Indicateur d'envoi relu depuis le cache : aucune requête de cette page
+            // ne le porte plus, il ne doit pas afficher « Envoi… » indéfiniment.
+            neverSent.push({ ...f, pending: false, removing: false });
           }
           if (neverSent.length > 0) files[slot] = [...existing, ...neverSent];
         }
@@ -470,6 +589,11 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       setRemoteStatus(submittedRef.current ? "submitted" : "online");
       hydratedRef.current = true;
       setHydrated(true);
+
+      if (recovered.sessionInvalid) {
+        handleSessionInvalid();
+        return;
+      }
 
       if (recovered.sessionMismatch) {
         // Une reprise de fichier a été explicitement refusée pour cause de portée
@@ -594,12 +718,19 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           break;
         }
 
-        // Dette technique assumée : cette détection repose sur un extrait du message
-        // d'erreur français renvoyé par le serveur (voir `requireWorkingSubmission`
-        // dans session.server.ts, "... les données sont figées"). Aucune autre
-        // décision ne doit se fonder sur ce texte ; à remplacer par un code d'erreur
-        // typé et stable dès qu'un tel code sera exposé côté serveur.
-        const alreadySubmitted = res.error.includes("figées");
+        if ("code" in res && res.code === "SESSION_INVALID") {
+          // Lien ou session refusés : la réponse reste en file et persistée localement
+          // (renvoyée à la réouverture d'un lien valide), toute reprise s'arrête.
+          pendingAnswers.current = { ...batch, ...pendingAnswers.current };
+          handleSessionInvalid();
+          result = { ok: false, error: res.error, code: "SESSION_INVALID" };
+          break;
+        }
+
+        // Code typé `SUBMITTED` (voir `SubmissionLockedError` côté serveur) ; la
+        // lecture du message reste un simple repli de compatibilité.
+        const alreadySubmitted =
+          ("code" in res && res.code === "SUBMITTED") || res.error.includes("figées");
 
         if (alreadySubmitted) {
           // La collecte a été transmise entre-temps (autre onglet/appareil) : ce lot
@@ -609,6 +740,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           // changement de statut et la resynchronisation depuis le serveur, eux, ne
           // se produisent que si le Provider est encore monté.
           submittedRef.current = true;
+          unconfirmedRef.current = {};
+          persistUnconfirmed();
           if (retryTimerRef.current) {
             clearTimeout(retryTimerRef.current);
             retryTimerRef.current = null;
@@ -634,6 +767,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         break;
       }
 
+      // Seules les clés dont la valeur confirmée est encore la dernière saisie sortent
+      // de la liste persistée des réponses non confirmées.
+      unconfirmedRef.current = remainingUnconfirmed(unconfirmedRef.current, batch);
+      persistUnconfirmed();
       confirmedAtLeastOneBatch = true;
       result = { ok: true };
     }
@@ -647,7 +784,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     }
 
     return result;
-  }, []);
+  }, [handleSessionMismatch, handleSessionInvalid, persistUnconfirmed]);
 
   /**
    * Programme une reprise automatique bornée. S'arrête sans rien programmer si le
@@ -749,7 +886,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handler = () => {
       onlineRef.current = true;
-      if (scopeStatusRef.current === "mismatch") return;
+      if (scopeStatusRef.current === "mismatch" || scopeStatusRef.current === "invalid") return;
       if (scopeStatusRef.current === "unconfirmed" || scopeStatusRef.current === "offline") {
         retryScopeSyncRef.current?.();
         return;
@@ -772,12 +909,17 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       // même localement, pour ne pas ré-accumuler des réponses qui seront de toute
       // façon jetées (la session doit être rouverte via un lien à jour).
       if (scopeStatusRef.current === "mismatch") return;
+      // Lien ou session refusés, ou collecte déjà transmise : aucune modification
+      // n'est acceptée, même localement (miroir du verrou serveur).
+      if (scopeStatusRef.current === "invalid" || submittedRef.current) return;
       setState((prev) => ({ ...prev, answers: { ...prev.answers, [key]: value } }));
       pendingAnswers.current[key] = value;
+      unconfirmedRef.current = { ...unconfirmedRef.current, [key]: value };
+      persistUnconfirmed();
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => void flushAnswers(), AUTOSAVE_DELAY);
     },
-    [flushAnswers],
+    [flushAnswers, persistUnconfirmed],
   );
 
   useEffect(() => {
@@ -839,6 +981,11 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
             handleSessionMismatch();
             return;
           }
+          if ("code" in res && res.code === "SESSION_INVALID") {
+            patchFile(slot, meta.id, { pending: false });
+            handleSessionInvalid();
+            return;
+          }
           patchFile(slot, meta.id, {
             pending: false,
             error: res.error,
@@ -853,13 +1000,14 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           });
         });
     },
-    [patchFile, handleSessionMismatch],
+    [patchFile, handleSessionMismatch, handleSessionInvalid],
   );
 
   const addFiles = useCallback(
     (slot: string, files: File[]) => {
       if (files.length === 0) return;
       if (scopeStatusRef.current === "mismatch") return;
+      if (scopeStatusRef.current === "invalid" || submittedRef.current) return;
 
       // Tant que la portée n'est pas confirmée, le fichier est enregistré localement
       // (visible, en attente) mais aucun import ne démarre — il sera repris par
@@ -927,11 +1075,11 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     (slot: string, id: string) => {
       // Aucun import de fichier ne doit démarrer tant que la portée n'est pas
       // confirmée par le serveur (voir `addFiles`/`flushQueuedFileUploads`).
-      if (!scopeConfirmedRef.current) return;
+      if (!scopeConfirmedRef.current || submittedRef.current) return;
       const expected = expectedScopeRef.current;
       if (!expected) return;
       const meta = (state.files[slot] ?? []).find((f) => f.id === id);
-      if (!meta) return;
+      if (!meta || meta.pending || meta.removing) return;
       const blob = collectionService.getFile(id);
       patchFile(slot, id, { pending: true, error: undefined, errorReason: undefined });
       void collectionService
@@ -953,6 +1101,11 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
             handleSessionMismatch();
             return;
           }
+          if ("code" in res && res.code === "SESSION_INVALID") {
+            patchFile(slot, id, { pending: false });
+            handleSessionInvalid();
+            return;
+          }
           patchFile(slot, id, {
             pending: false,
             error: res.error,
@@ -967,46 +1120,90 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           });
         });
     },
-    [state.files, patchFile, handleSessionMismatch],
+    [state.files, patchFile, handleSessionMismatch, handleSessionInvalid],
   );
 
   /**
-   * Un fichier jamais confirmé côté serveur (pas de `remoteId`) n'existe que
-   * localement : retrait immédiat, sans appel réseau. Un fichier déjà confirmé n'est
-   * en revanche retiré de l'affichage qu'*après* confirmation serveur de sa
-   * suppression — jamais avant, jamais de façon seulement optimiste — pour qu'un
-   * refus (`SESSION_MISMATCH` ou toute autre erreur) laisse l'entrée strictement
-   * identique à ce qu'elle était juste avant l'appel, plutôt que supprimée en
-   * apparence alors qu'elle existe toujours côté serveur.
+   * Suppression d'un fichier, sans jamais laisser l'affichage diverger du serveur :
+   * - envoi ou suppression déjà en cours : refus ("busy") — un envoi parti ne doit
+   *   jamais pouvoir réapparaître ensuite comme fichier valide après une suppression
+   *   seulement locale ;
+   * - aucun ticket jamais obtenu (pas de `uploadPath`) : aucun objet n'a pu être écrit,
+   *   retrait immédiat sans appel réseau ;
+   * - objet possiblement écrit mais jamais confirmé (réponse perdue, échec) : la
+   *   confirmation idempotente est d'abord retentée sur le chemin connu, pour savoir si
+   *   le serveur le connaît déjà ; s'il le connaît, il est supprimé côté serveur comme
+   *   un fichier confirmé, sinon (absent ou refusé) il est retiré localement ;
+   * - fichier confirmé : retiré de l'affichage seulement *après* confirmation serveur
+   *   de sa suppression. Un refus laisse l'entrée telle qu'elle était.
    */
   const removeFile = useCallback(
     (slot: string, id: string): RemoveFileOutcome => {
-      if (scopeStatusRef.current === "mismatch") return "blocked";
+      if (
+        scopeStatusRef.current === "mismatch" ||
+        scopeStatusRef.current === "invalid" ||
+        submittedRef.current
+      ) {
+        return "blocked";
+      }
       const meta = (state.files[slot] ?? []).find((f) => f.id === id);
       if (!meta) return "not-found";
+      if (meta.pending || meta.removing) return "busy";
 
-      if (!meta.remoteId) {
+      if (!meta.remoteId && !meta.uploadPath) {
         collectionService.forgetFile(id);
         dropFile(slot, id);
         return "removed";
       }
 
       const expected = expectedScopeRef.current;
-      if (!onlineRef.current || !expected) return "deferred";
+      if (!onlineRef.current || !expected || !scopeConfirmedRef.current) return "deferred";
 
-      void collectionService.deleteFile(meta.remoteId, expected).then((res) => {
+      const refused = (code: string | undefined) => {
+        if (code === "SESSION_MISMATCH") handleSessionMismatch();
+        if (code === "SESSION_INVALID") handleSessionInvalid();
+      };
+
+      patchFile(slot, id, { removing: true });
+      void (async () => {
+        let remoteId = meta.remoteId;
+        if (!remoteId && meta.uploadPath) {
+          const check = await collectionService.confirmUpload(
+            { slot, path: meta.uploadPath, name: meta.name, mime: meta.type, size: meta.size },
+            expected,
+          );
+          if (check.ok) {
+            remoteId = check.data.id;
+          } else if (check.reason === "missing" || check.reason === "rejected") {
+            // Rien de valide côté serveur pour ce chemin : retrait local sans risque.
+            collectionService.forgetFile(id);
+            dropFile(slot, id);
+            return;
+          } else {
+            patchFile(slot, id, { removing: false });
+            refused(check.code);
+            return;
+          }
+        }
+        if (!remoteId) return;
+
+        const res = await collectionService.deleteFile(remoteId, expected);
         if (res.ok) {
           collectionService.forgetFile(id);
           dropFile(slot, id);
           return;
         }
-        if ("code" in res && res.code === "SESSION_MISMATCH") handleSessionMismatch();
-        // Refus (portée divergente ou autre échec) : rien n'est modifié localement —
-        // l'entrée reste affichée exactement comme avant cet appel.
-      });
+        // Refus : l'entrée reflète désormais l'état serveur réel (confirmée si la
+        // vérification ci-dessus vient de la reconnaître).
+        patchFile(slot, id, {
+          removing: false,
+          ...(meta.remoteId ? {} : { remoteId, error: undefined, errorReason: undefined }),
+        });
+        refused(res.code);
+      })().catch(() => patchFile(slot, id, { removing: false }));
       return "removed";
     },
-    [dropFile, state.files, handleSessionMismatch],
+    [dropFile, patchFile, state.files, handleSessionMismatch, handleSessionInvalid],
   );
 
   const markSubmitted = useCallback((at: number | null) => {
@@ -1016,9 +1213,11 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, submittedAt: at }));
     if (at !== null) {
       submittedRef.current = true;
+      unconfirmedRef.current = {};
+      persistUnconfirmed();
       setRemoteStatus("submitted");
     }
-  }, []);
+  }, [persistUnconfirmed]);
 
   const refresh = useCallback(() => {
     void collectionService.snapshot().then((res) => {
@@ -1040,7 +1239,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     if (scopeIdRef.current) {
       collectionService.clear(scopeIdRef.current);
       collectionService.clearProgress(scopeIdRef.current);
+      collectionService.saveUnconfirmed(scopeIdRef.current, {});
     }
+    pendingAnswers.current = {};
+    unconfirmedRef.current = {};
     setState(emptyState);
     setVisitedSteps(new Set());
     setCompletedSteps(new Set());
@@ -1053,6 +1255,26 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const reportSessionMismatch = useCallback(() => {
     handleSessionMismatch();
   }, [handleSessionMismatch]);
+
+  const reportSessionInvalid = useCallback(() => {
+    handleSessionInvalid();
+  }, [handleSessionInvalid]);
+
+  const readOnly = remoteStatus === "submitted" || state.submittedAt !== null;
+
+  /**
+   * Cohérence « introuvable » ↔ preuve réelle (voir `MISSING_FLAG_RULES`) : dès qu'un
+   * fichier est confirmé côté serveur — ou qu'une réponse précise est donnée — pour un
+   * élément marqué introuvable, l'indicateur repasse à `false` via le mécanisme normal
+   * de persistance (`setAnswer`). Un fichier en cours d'envoi ou en échec n'est jamais
+   * une preuve. Uniquement sur une portée confirmée et une collecte non transmise.
+   */
+  useEffect(() => {
+    if (!hydrated || scopeStatus !== "confirmed" || readOnly) return;
+    for (const [key, value] of Object.entries(missingFlagCorrections(state))) {
+      setAnswer(key, value);
+    }
+  }, [state, hydrated, scopeStatus, readOnly, setAnswer]);
 
   const getExpectedScope = useCallback(() => expectedScopeRef.current, []);
 
@@ -1077,6 +1299,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       scopeStatus,
       retryScopeSync,
       reportSessionMismatch,
+      reportSessionInvalid,
+      readOnly,
       getExpectedScope,
       setAnswer,
       flushAnswers,
@@ -1102,6 +1326,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       scopeStatus,
       retryScopeSync,
       reportSessionMismatch,
+      reportSessionInvalid,
+      readOnly,
       getExpectedScope,
       setAnswer,
       flushAnswers,
@@ -1144,12 +1370,14 @@ export function useSingleChoice(key: string): [string | null, (v: string) => voi
   return [value, (v: string) => setAnswer(key, v)];
 }
 
+/** Choix multiples : les options exclusives éventuelles de la question (« Je ne sais
+ *  pas », voir `EXCLUSIVE_CHOICES`) sont appliquées par `toggleMultiChoice`. */
 export function useMultiChoice(key: string): [string[], (v: string) => void] {
   const { state, setAnswer } = useCollection();
   const raw = state.answers[key];
   const values = Array.isArray(raw) ? raw : [];
   const toggle = (v: string) =>
-    setAnswer(key, values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+    setAnswer(key, toggleMultiChoice(values, v, exclusiveChoicesFor(key)));
   return [values, toggle];
 }
 

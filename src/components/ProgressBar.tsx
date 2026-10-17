@@ -66,7 +66,7 @@ export function ProgressBar({ current }: { current: StepId }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={clampedPercent}
-        aria-valuetext={`${clampedPercent} % — ${remainingText}`}
+        aria-valuetext={`${clampedPercent} % · ${remainingText}`}
       >
         <div
           aria-hidden="true"

@@ -1,7 +1,7 @@
 /**
- * Gestion centralis├®e des erreurs serveur et du monitoring applicatif.
- * Objectifs : une seule forme de log structur├®, aucun d├®tail technique renvoy├®
- * au navigateur, et un identifiant d'incident partag├® entre l'utilisateur et
+ * Gestion centralisée des erreurs serveur et du monitoring applicatif.
+ * Objectifs : une seule forme de log structuré, aucun détail technique renvoyé
+ * au navigateur, et un identifiant d'incident partagé entre l'utilisateur et
  * les journaux pour le support.
  */
 
@@ -21,15 +21,15 @@ export function logSecurityEvent(scope: string, event: string, meta: LogMeta = {
   console.warn(JSON.stringify({ level: "security", scope, event, ...meta, at: new Date().toISOString() }));
 }
 
-/** Erreurs ┬½ m├®tier ┬╗ s├╗res ├á afficher : elles sont ├®crites par nous, en fran├ºais. */
+/** Erreurs « métier » sûres à afficher : elles sont écrites par nous, en français. */
 export function isExpectedError(error: unknown, expected: ReadonlyArray<Function>): boolean {
   return expected.some((type) => error instanceof (type as never));
 }
 
 /**
- * Convertit une exception en r├®sultat public.
+ * Convertit une exception en résultat public.
  * Les erreurs attendues gardent leur message ; toute autre exception est
- * journalis├®e puis remplac├®e par un message g├®n├®rique + identifiant d'incident.
+ * journalisée puis remplacée par un message générique + identifiant d'incident.
  */
 export function toPublicError(
   scope: string,
@@ -51,5 +51,5 @@ export function toPublicError(
       at: new Date().toISOString(),
     }),
   );
-  return { ok: false, error: `${fallback} (r├®f├®rence ${id})` };
+  return { ok: false, error: `${fallback} (référence ${id})` };
 }

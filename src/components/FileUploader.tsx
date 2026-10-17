@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { MicroConfirm } from "@/components/MicroConfirm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { collectionService, formatBytes } from "@/lib/collection/collectionService";
+import { isFileConfirmed } from "@/lib/collection/rules";
 import { useCollection, useSlotFiles } from "@/lib/collection/store";
 import { cn } from "@/lib/utils";
 
@@ -22,13 +23,19 @@ export function FileUploader({
   multiple?: boolean;
 }) {
   const { files, add, retry, remove } = useSlotFiles(slot);
-  const { scopeStatus } = useCollection();
+  const { scopeStatus, readOnly } = useCollection();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   // Retour explicite lorsqu'une suppression ne peut pas être tentée (hors ligne ou
-  // portée pas encore confirmée) : sans ce message, le bouton semble n'avoir aucun
-  // effet, alors que l'entrée reste affichée volontairement (voir `removeFile`).
-  const [deferredNotice, setDeferredNotice] = useState(false);
+  // portée pas encore confirmée, ou envoi encore en cours) : sans ce message, le bouton
+  // semble n'avoir aucun effet, alors que l'entrée reste affichée volontairement (voir
+  // `removeFile`).
+  const [removeNotice, setRemoveNotice] = useState<"deferred" | "busy" | null>(null);
+
+  // Même définition que la validation (`isFileConfirmed`) : seul un fichier confirmé
+  // côté serveur est annoncé comme enregistré ; un envoi en cours est signalé à part.
+  const confirmedCount = files.filter(isFileConfirmed).length;
+  const inProgressCount = files.filter((f) => f.pending || f.removing).length;
 
   const handleList = (list: FileList | null) => {
     if (!list) return;
@@ -37,11 +44,16 @@ export function FileUploader({
 
   const handleRemove = (id: string) => {
     const outcome = remove(id);
-    setDeferredNotice(outcome === "deferred");
+    setRemoveNotice(outcome === "deferred" || outcome === "busy" ? outcome : null);
   };
 
   return (
     <div className="space-y-3">
+      {readOnly ? (
+        <p className="text-sm text-muted-foreground">
+          Collecte transmise : fichiers en consultation seule.
+        </p>
+      ) : (
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -96,24 +108,34 @@ export function FileUploader({
           }}
         />
       </div>
+      )}
 
-      {files.length > 0 ? (
+      {confirmedCount > 0 ? (
         <MicroConfirm>
-          {files.length === 1
+          {confirmedCount === 1
             ? "1 élément bien enregistré"
-            : `${files.length} éléments bien enregistrés`}
+            : `${confirmedCount} éléments bien enregistrés`}
         </MicroConfirm>
       ) : null}
 
-      {deferredNotice ? (
+      {inProgressCount > 0 ? (
+        <p role="status" className="text-xs font-medium text-muted-foreground">
+          {inProgressCount === 1
+            ? "1 élément en cours de traitement, garde cette page ouverte."
+            : `${inProgressCount} éléments en cours de traitement, garde cette page ouverte.`}
+        </p>
+      ) : null}
+
+      {removeNotice ? (
         <div
           role="status"
           className="flex items-start gap-2.5 rounded-lg border border-border-strong bg-surface-raised px-3.5 py-3 text-sm font-medium text-foreground"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span>
-            Suppression impossible pour le moment : reconnecte-toi ou attends la confirmation de
-            ta collecte, puis réessaie.
+            {removeNotice === "busy"
+              ? "Ce fichier est encore en cours d'envoi : tu pourras le supprimer dès que l'envoi sera terminé."
+              : "Suppression impossible pour le moment : reconnecte-toi ou attends la confirmation de ta collecte, puis réessaie."}
           </span>
         </div>
       ) : null}
@@ -126,11 +148,14 @@ export function FileUploader({
             // seule une re-sélection (supprimer puis rajouter) permet d'avancer.
             const lostWithoutRecovery = file.errorReason === "missing" && !hasBlob;
             // Seul un fichier confirmé côté serveur (remoteId), ni en cours d'envoi ni
-            // en erreur, est réellement transmis — même définition que `readyCount`
-            // dans status.ts, pour ne jamais afficher « Reçu » sur ce que le serveur ne
+            // en erreur, est réellement transmis — même définition que `isFileConfirmed`
+            // (rules.ts), pour ne jamais afficher « Reçu » sur ce que le serveur ne
             // reconnaît pas encore comme tel.
-            const transmitted = Boolean(file.remoteId) && !file.pending && !file.error;
+            const transmitted = isFileConfirmed(file);
+            const busy = Boolean(file.pending || file.removing);
             const canRetry =
+              !readOnly &&
+              !busy &&
               Boolean(file.error) &&
               file.errorReason !== "rejected" &&
               !lostWithoutRecovery &&
@@ -140,19 +165,21 @@ export function FileUploader({
 
             const tone = file.error ? "neutral" : file.pending ? "neutral" : transmitted ? "gold" : "neutral";
 
-            const statusLabel = file.error
-              ? file.errorReason === "rejected"
-                ? "Refusé"
-                : lostWithoutRecovery
-                  ? "Perdu"
-                  : "Échec"
-              : file.pending
-                ? "Envoi…"
-                : transmitted
-                  ? "Reçu"
-                  : hasBlob
-                    ? "En attente de confirmation"
-                    : "À re-sélectionner";
+            const statusLabel = file.removing
+              ? "Suppression…"
+              : file.error
+                ? file.errorReason === "rejected"
+                  ? "Refusé"
+                  : lostWithoutRecovery
+                    ? "Perdu"
+                    : "Échec"
+                : file.pending
+                  ? "Envoi…"
+                  : transmitted
+                    ? "Reçu"
+                    : hasBlob
+                      ? "En attente de confirmation"
+                      : "À re-sélectionner";
 
             const guidance = file.error
               ? file.errorReason === "rejected"
@@ -202,14 +229,24 @@ export function FileUploader({
                     </button>
                   ) : null}
 
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(file.id)}
-                    aria-label={`Supprimer ${file.name}`}
-                    className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-                  >
-                    <X className="size-4" aria-hidden="true" />
-                  </button>
+                  {!readOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(file.id)}
+                      aria-disabled={busy || undefined}
+                      aria-label={
+                        busy
+                          ? `Suppression de ${file.name} possible après la fin de l'envoi`
+                          : `Supprimer ${file.name}`
+                      }
+                      className={cn(
+                        "grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground",
+                        busy && "cursor-default opacity-50 hover:border-border hover:text-muted-foreground",
+                      )}
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </button>
+                  ) : null}
                 </span>
               </li>
             );

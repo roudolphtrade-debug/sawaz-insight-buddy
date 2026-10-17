@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CircleDot, ListChecks } from "lucide-react";
 
 import { ChoiceCard } from "@/components/ChoiceCard";
+import { useCollection } from "@/lib/collection/store";
 import { cn } from "@/lib/utils";
 
 export type Choice = {
@@ -10,7 +11,15 @@ export type Choice = {
   description?: string;
   icon?: ReactNode;
   hint?: string;
+  /**
+   * Option retirée de l'interface mais encore présente dans des réponses déjà
+   * enregistrées : affichée uniquement si elle est sélectionnée, pour que la réponse
+   * reste lisible et puisse être retirée.
+   */
+  legacy?: boolean;
 };
+
+const LEGACY_HINT = "Option retirée : décoche-la, tes autres choix suffisent.";
 
 function ChoiceMode({ multi }: { multi: boolean }) {
   const Icon = multi ? ListChecks : CircleDot;
@@ -36,6 +45,8 @@ export function ChoiceGroup({
   columns?: 1 | 2;
   label?: string;
 }) {
+  const { readOnly } = useCollection();
+
   return (
     <div>
       <ChoiceMode multi={false} />
@@ -53,6 +64,7 @@ export function ChoiceGroup({
             icon={option.icon}
             hint={option.hint}
             selected={value === option.value}
+            disabled={readOnly}
             onSelect={() => onChange(option.value)}
           />
         ))}
@@ -74,6 +86,9 @@ export function MultiChoiceGroup({
   columns?: 1 | 2;
   label?: string;
 }) {
+  const { readOnly } = useCollection();
+  const visible = options.filter((option) => !option.legacy || values.includes(option.value));
+
   return (
     <div>
       <ChoiceMode multi />
@@ -83,15 +98,16 @@ export function MultiChoiceGroup({
         aria-label={label}
         className={cn("grid gap-3", columns === 2 && "sm:grid-cols-2")}
       >
-        {options.map((option) => (
+        {visible.map((option) => (
           <ChoiceCard
             key={option.value}
             multi
             label={option.label}
             description={option.description}
             icon={option.icon}
-            hint={option.hint}
+            hint={option.legacy ? LEGACY_HINT : option.hint}
             selected={values.includes(option.value)}
+            disabled={readOnly}
             onSelect={() => onToggle(option.value)}
           />
         ))}

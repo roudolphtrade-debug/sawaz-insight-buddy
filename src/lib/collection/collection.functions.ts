@@ -11,7 +11,20 @@ import type { AnswerValue } from "./types";
  * Le frontend ne voit jamais la clé service_role ni le bucket : tout passe par ces fonctions.
  */
 
-type Result<T> = { ok: true; data: T } | { ok: false; error: string; code?: "SESSION_MISMATCH" };
+/**
+ * Codes d'erreur stables, à préférer à toute lecture du message :
+ * - SESSION_MISMATCH : portée attendue différente de la session active ;
+ * - SESSION_INVALID : lien ou session absent, invalide, expiré, révoqué ou épuisé ;
+ * - SUBMITTED : la submission est déjà transmise, les données sont figées.
+ */
+export type CollectionErrorCode = "SESSION_MISMATCH" | "SESSION_INVALID" | "SUBMITTED";
+
+type Failure = { ok: false; error: string; code?: CollectionErrorCode };
+type Result<T> = { ok: true; data: T } | Failure;
+
+/** Message volontairement générique : le motif précis (expiré, révoqué, épuisé…) n'est
+ *  jamais exposé au navigateur. */
+const SESSION_INVALID_MESSAGE = "Ce lien sécurisé n'est plus valide.";
 
 /**
  * Portée attendue par le client, à transmettre à chaque opération mutante — voir
@@ -32,14 +45,17 @@ const readExpectedScope = (input: Partial<ExpectedScopeInput>): ExpectedScopeInp
  * décalage de portée) gardent leur message français, toute autre exception est
  * journalisée avec un identifiant d'incident et remplacée par un message générique.
  */
-function handle(
-  error: unknown,
-  fallback: string,
-): { ok: false; error: string; code?: "SESSION_MISMATCH" } {
+function handle(error: unknown, fallback: string): Failure {
   // La couche session est importée dynamiquement : on reconnaît ses erreurs
   // métier par leur nom plutôt que par une référence de classe.
   if (error instanceof Error && error.name === "SessionMismatchError") {
     return { ok: false, error: error.message, code: "SESSION_MISMATCH" };
+  }
+  if (error instanceof Error && error.name === "LinkAccessError") {
+    return { ok: false, error: SESSION_INVALID_MESSAGE, code: "SESSION_INVALID" };
+  }
+  if (error instanceof Error && error.name === "SubmissionLockedError") {
+    return { ok: false, error: error.message, code: "SUBMITTED" };
   }
   if (error instanceof Error && error.name === "SessionError") {
     return { ok: false, error: error.message };
@@ -100,7 +116,7 @@ export const saveCollectionAnswers = createServerFn({ method: "POST" })
  * toute écriture en stockage. `reason` absent = erreur temporaire de serveur ou de
  * stockage, une nouvelle tentative reste légitime.
  */
-type TicketFailure = { ok: false; error: string; reason?: "rejected"; code?: "SESSION_MISMATCH" };
+type TicketFailure = { ok: false; error: string; reason?: "rejected"; code?: CollectionErrorCode };
 export type RequestUploadTicketResult =
   | { ok: true; data: { path: string; token: string } }
   | TicketFailure;
@@ -141,7 +157,7 @@ type ConfirmFailure = {
   ok: false;
   error: string;
   reason?: "missing" | "rejected";
-  code?: "SESSION_MISMATCH";
+  code?: CollectionErrorCode;
 };
 export type ConfirmUploadResult = { ok: true; data: RemoteFile } | ConfirmFailure;
 
@@ -191,7 +207,7 @@ export const deleteCollectionFile = createServerFn({ method: "POST" })
 
 export const submitCollection = createServerFn({ method: "POST" })
   .inputValidator((input: Partial<ExpectedScopeInput>) => readExpectedScope(input))
-  .handler(async ({ data }): Promise<Result<{ submittedAt: string }>> => {
+  .handler(async ({ data }): Promise<Result<{ submittedAt: string | null }>> => {
     const s = await import("./session.server");
     try {
       const session = await s.requireLinkSession();

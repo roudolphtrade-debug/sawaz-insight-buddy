@@ -13,13 +13,13 @@ import { stepNeighbours } from "@/lib/steps";
 export const Route = createFileRoute("/collecte/")({
   head: () => ({
     meta: [
-      { title: "LFTC — Mettre des chiffres derrière les intuitions" },
+      { title: "LFTC · Mettre des chiffres derrière les intuitions" },
       {
         name: "description",
         content:
           "Phase 1 · Étape 2 : première vague de collecte de données LFTC, consacrée uniquement à YouTube et Meta. Environ 15 minutes.",
       },
-      { property: "og:title", content: "LFTC — Mettre des chiffres derrière les intuitions" },
+      { property: "og:title", content: "LFTC · Mettre des chiffres derrière les intuitions" },
       {
         property: "og:description",
         content:
@@ -68,8 +68,8 @@ function IntroductionScreen() {
   return (
     <StepLayout
       step="introduction"
-      title="LFTC — Mettre des chiffres derrière les intuitions"
-      intro="Phase 1 · Étape 2 — Première vague de données : YouTube + Meta"
+      title="LFTC · Mettre des chiffres derrière les intuitions"
+      intro="Phase 1 · Étape 2 - Première vague de données : YouTube + Meta"
     >
       <section className="surface-panel p-5 sm:p-6">
         <div className="flex flex-wrap gap-2">

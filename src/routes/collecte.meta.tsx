@@ -7,8 +7,8 @@ import { Disclosure } from "@/components/Disclosure";
 import { ErrorSummary } from "@/components/ErrorSummary";
 import { FileUploader } from "@/components/FileUploader";
 import { MetricCard } from "@/components/MetricCard";
+import { MissingToggle } from "@/components/MissingToggle";
 import { NavigationFooter } from "@/components/NavigationFooter";
-import { OptionToggle } from "@/components/OptionToggle";
 import { PathHint, ThreeSeconds, WhyNote } from "@/components/PathHint";
 import { QuestionCard } from "@/components/QuestionCard";
 import { SectionBlock } from "@/components/SectionBlock";
@@ -16,6 +16,7 @@ import { SawazCallout } from "@/components/SawazCallout";
 import { StepLayout } from "@/components/StepLayout";
 import { TextAnswer } from "@/components/TextAnswer";
 import { K, SLOT } from "@/lib/collection/keys";
+import { confirmedFileCount } from "@/lib/collection/rules";
 import { metaBlocker, metaIssues } from "@/lib/collection/status";
 import {
   useBoolAnswer,
@@ -32,13 +33,13 @@ import { stepNeighbours } from "@/lib/steps";
 export const Route = createFileRoute("/collecte/meta")({
   head: () => ({
     meta: [
-      { title: "Meta — Comprendre le moteur de volume | LFTC" },
+      { title: "Meta · Comprendre le moteur de volume | LFTC" },
       {
         name: "description",
         content:
           "Période, objectif de campagne, destination, résultats et suivi des conversions dans le gestionnaire de publicités Meta.",
       },
-      { property: "og:title", content: "Meta — Comprendre le moteur de volume" },
+      { property: "og:title", content: "Meta · Comprendre le moteur de volume" },
       {
         property: "og:description",
         content: "Collecte des données Meta Ads pour comprendre le rôle réel de Meta chez LFTC.",
@@ -52,7 +53,7 @@ export const Route = createFileRoute("/collecte/meta")({
 
 const lexique = [
   {
-    term: "Amount Spent — Montant dépensé",
+    term: "Amount Spent · Montant dépensé",
     meaning: "Combien as-tu réellement investi sur la période ?",
   },
   {
@@ -60,35 +61,35 @@ const lexique = [
     meaning: "Combien de fois tes publicités ont été affichées ?",
   },
   {
-    term: "Reach — Couverture",
+    term: "Reach · Couverture",
     meaning: "Combien de personnes différentes ont vu tes publicités ?",
   },
   {
-    term: "CTR — Click-Through Rate (taux de clic)",
+    term: "CTR · Click-Through Rate (taux de clic)",
     meaning: "Combien de personnes cliquent après avoir vu la publicité ?",
   },
   {
-    term: "CPC — Cost Per Click (coût par clic)",
+    term: "CPC · Cost Per Click (coût par clic)",
     meaning: "Combien coûte un clic en moyenne ?",
   },
   {
-    term: "CPM — Cost Per Mille (coût pour mille impressions)",
+    term: "CPM · Cost Per Mille (coût pour mille impressions)",
     meaning: "Combien coûte 1 000 affichages ?",
   },
   {
-    term: "Frequency — Fréquence",
+    term: "Frequency · Fréquence",
     meaning: "Combien de fois une même personne voit ta publicité en moyenne ?",
   },
   {
-    term: "Link Clicks — Clics sur le lien",
+    term: "Link Clicks · Clics sur le lien",
     meaning: "Combien de personnes ont cliqué sur ton lien ?",
   },
   {
-    term: "Landing Page Views — Vues de page de destination",
+    term: "Landing Page Views · Vues de page de destination",
     meaning: "Combien de personnes ont réellement chargé ta page après le clic ?",
   },
   {
-    term: "Cost per Result — Coût par résultat",
+    term: "Cost per Result · Coût par résultat",
     meaning: "Combien te coûte en moyenne chaque résultat obtenu ?",
   },
 ];
@@ -112,13 +113,16 @@ function MetaScreen() {
   const [destination, toggleDestination] = useMultiChoice(K.meta.destination);
   const [destinationAutre, setDestinationAutre] = useTextAnswer(K.meta.destinationAutre);
   const [mode, setMode] = useSingleChoice(K.meta.mode);
-  const [exportImpossible, toggleExportImpossible] = useBoolAnswer(K.meta.exportImpossible);
+  const [exportImpossible] = useBoolAnswer(K.meta.exportImpossible);
   const [results, toggleResult] = useMultiChoice(K.meta.results);
   const [resultsAutre, setResultsAutre] = useTextAnswer(K.meta.resultsAutre);
   const [tracking, setTracking] = useSingleChoice(K.meta.tracking);
-  const [resultsMissing, toggleResultsMissing] = useBoolAnswer(K.meta.resultsMissing);
   const blocker = metaBlocker(state);
   const issues = metaIssues(state);
+  // Message d'erreur affiché sous une question : même source que le résumé d'erreurs
+  // et la validation serveur (`metaIssues`), jamais une condition recopiée ici.
+  const issueMessage = (id: string) =>
+    showErrors ? issues.find((issue) => issue.id === id)?.message : undefined;
   const [showErrors, setShowErrors] = useState(false);
   const { highlightedId, focusQuestion } = useQuestionFocus();
 
@@ -139,7 +143,7 @@ function MetaScreen() {
   return (
     <StepLayout
       step="meta"
-      title="Meta — Comprendre le moteur de volume"
+      title="Meta · Comprendre le moteur de volume"
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
         <div className="space-y-2 text-sm leading-relaxed text-body">
@@ -212,18 +216,12 @@ function MetaScreen() {
         highlighted={highlightedId === "meta-objectifs"}
         number="Question 02"
         status="required"
-        error={
-          showErrors && (objectifs.length === 0 || (objectifs.includes("autre") && !objectifAutre.trim()))
-            ? objectifs.includes("autre")
-              ? "Précise l’objectif sélectionné."
-              : "Sélectionne au moins un objectif de campagne."
-            : undefined
-        }
+        error={issueMessage("meta-objectifs")}
         title="Quel est ou quels sont les principaux objectifs utilisés sur tes campagnes LFTC ?"
-        description="Dans Meta, cela s'appelle : Campaign Objective — Objectif de campagne."
+        description="Dans Meta, cela s'appelle : Campaign Objective · Objectif de campagne."
         help={{
           title: "Où trouver la donnée",
-          body: "Gestionnaire de publicités Meta → colonne Objective — Objectif.",
+          body: "Gestionnaire de publicités Meta → colonne Objective · Objectif.",
         }}
       >
         <div className="space-y-4">
@@ -235,7 +233,7 @@ function MetaScreen() {
               { value: "trafic", label: "Trafic" },
               { value: "engagement", label: "Engagement" },
               { value: "messages", label: "Messages" },
-              { value: "leads", label: "Leads — Prospects" },
+              { value: "leads", label: "Leads · Prospects" },
               { value: "ventes", label: "Ventes-conversions" },
               { value: "plusieurs", label: "Plusieurs objectifs selon les campagnes" },
               { value: "autre", label: "Autre" },
@@ -261,14 +259,7 @@ function MetaScreen() {
         highlighted={highlightedId === "meta-destination"}
         number="Question 03"
         status="required"
-        error={
-          showErrors &&
-          (destination.length === 0 || (destination.includes("autre-page") && !destinationAutre.trim()))
-            ? destination.includes("autre-page")
-              ? "Précise cette autre destination."
-              : "Sélectionne au moins une destination après le clic."
-            : undefined
-        }
+        error={issueMessage("meta-destination")}
         title="Où tes campagnes Meta envoient-elles principalement les personnes ?"
       >
         <div className="space-y-4">
@@ -281,7 +272,9 @@ function MetaScreen() {
             { value: "telegram", label: "Telegram public directement" },
             { value: "conversation", label: "Conversation-message" },
             { value: "autre-page", label: "Autre page" },
-            { value: "plusieurs", label: "Plusieurs destinations" },
+            // Retirée : le choix multiple exprime déjà plusieurs destinations. Conservée
+            // en lecture pour les réponses déjà enregistrées avec cette valeur.
+            { value: "plusieurs", label: "Plusieurs destinations", legacy: true },
             { value: "inconnu", label: "Je ne sais pas" },
           ]}
           columns={2}
@@ -315,6 +308,9 @@ function MetaScreen() {
           label="Méthode de transmission Meta"
           value={mode}
           onChange={(v) => {
+            // Re-cliquer sur la méthode déjà choisie ne change rien : seul un vrai
+            // changement de méthode réinitialise « export impossible ».
+            if (v === mode) return;
             setMode(v);
             setAnswer(K.meta.exportImpossible, false);
           }}
@@ -333,30 +329,30 @@ function MetaScreen() {
           number="Option recommandée"
           status="conditional"
           error={
-            showErrors && (state.files[SLOT.metaExport]?.length ?? 0) === 0
+            showErrors && confirmedFileCount(state, SLOT.metaExport) === 0
               ? "Ajoute l’export Meta ou coche « Je n’arrive finalement pas à exporter »."
               : undefined
           }
-          title="Option recommandée — Export Meta"
-          description="Dans le gestionnaire de publicités : Reports — Rapports, puis Export. Sélectionne la période choisie, puis télécharge le fichier en CSV ou Excel."
+          title="Option recommandée · Export Meta"
+          description="Dans le gestionnaire de publicités : Reports · Rapports, puis Export. Sélectionne la période choisie, puis télécharge le fichier en CSV ou Excel."
         >
           <div className="space-y-4">
-            <PathHint steps={["Gestionnaire de publicités", "Reports — Rapports", "Export"]} />
+            <PathHint steps={["Gestionnaire de publicités", "Reports · Rapports", "Export"]} />
             <div className="rounded-xl border border-border bg-surface-raised p-4">
               <p className="text-eyebrow text-sawaz">Colonnes utiles dans l'export</p>
               <ul className="mt-2 grid gap-1 text-sm leading-relaxed text-body sm:grid-cols-2">
                 {[
-                  "Amount Spent — Montant dépensé",
+                  "Amount Spent · Montant dépensé",
                   "Impressions",
-                  "Reach — Couverture",
-                  "CTR — Taux de clic",
-                  "CPC — Coût par clic",
-                  "CPM — Coût pour mille",
-                  "Frequency — Fréquence",
-                  "Link Clicks — Clics sur le lien",
-                  "Landing Page Views — Vues de page de destination",
-                  "Results — Résultats",
-                  "Cost per Result — Coût par résultat",
+                  "Reach · Couverture",
+                  "CTR · Taux de clic",
+                  "CPC · Coût par clic",
+                  "CPM · Coût pour mille",
+                  "Frequency · Fréquence",
+                  "Link Clicks · Clics sur le lien",
+                  "Landing Page Views · Vues de page de destination",
+                  "Results · Résultats",
+                  "Cost per Result · Coût par résultat",
                 ].map((col) => (
                   <li key={col}>→ {col}</li>
                 ))}
@@ -368,10 +364,9 @@ function MetaScreen() {
               hint="Formats acceptés : CSV, XLS, XLSX"
               accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             />
-            <OptionToggle
+            <MissingToggle
+              flagKey={K.meta.exportImpossible}
               label="Je n'arrive finalement pas à exporter"
-              checked={exportImpossible}
-              onToggle={toggleExportImpossible}
             />
           </div>
         </QuestionCard>
@@ -384,7 +379,7 @@ function MetaScreen() {
           number="Captures Meta"
           status="conditional"
           error={
-            showErrors && (state.files[SLOT.metaCaptures]?.length ?? 0) === 0
+            showErrors && confirmedFileCount(state, SLOT.metaCaptures) === 0
               ? "Ajoute au moins une capture Meta pour cette méthode de transmission."
               : undefined
           }
@@ -393,7 +388,7 @@ function MetaScreen() {
         >
           <div className="space-y-4">
             <PathHint
-              steps={["Gestionnaire de publicités", "Campaigns — Campagnes", "Période choisie"]}
+              steps={["Gestionnaire de publicités", "Campaigns · Campagnes", "Période choisie"]}
             />
             <ThreeSeconds>
               Le tableau qui montre, campagne par campagne, ce que tu as dépensé et ce que tu as
@@ -402,7 +397,7 @@ function MetaScreen() {
             {mode === "guide" ? (
               <ol className="grid gap-2 text-sm leading-relaxed text-body">
                 <li>1. Ouvre le gestionnaire de publicités Meta depuis ton ordinateur.</li>
-                <li>2. Va dans Campaigns — Campagnes.</li>
+                <li>2. Va dans Campaigns · Campagnes.</li>
                 <li>3. En haut à droite, sélectionne la période choisie.</li>
                 <li>4. Fais une capture du tableau avec les colonnes de performance visibles.</li>
               </ol>
@@ -439,23 +434,9 @@ function MetaScreen() {
         highlighted={highlightedId === "meta-results"}
         number="Results"
         status="required"
-        error={
-          showErrors &&
-          !resultsMissing &&
-          (
-            results.length === 0 ||
-            (results.includes("autre") && !resultsAutre.trim()) ||
-            (results.includes("inconnu") && (state.files[SLOT.metaResults]?.length ?? 0) === 0)
-          )
-            ? results.length === 0
-              ? "Indique ce que compte la colonne Results, ou signale que tu ne trouves pas la donnée."
-              : results.includes("autre") && !resultsAutre.trim()
-                ? "Précise ce que compte la colonne Results."
-                : "Ajoute une capture de la colonne Results, ou indique que tu ne trouves pas cette donnée."
-            : undefined
-        }
-        title="Results — Résultats"
-        description="Dans Meta, la colonne Results — Résultats indique le nombre d'actions obtenues selon l'objectif de la campagne."
+        error={issueMessage("meta-results")}
+        title="Results · Résultats"
+        description="Dans Meta, la colonne Results · Résultats indique le nombre d'actions obtenues selon l'objectif de la campagne."
       >
         <div className="space-y-4">
           <ThreeSeconds>
@@ -488,7 +469,7 @@ function MetaScreen() {
           {results.includes("inconnu") ? (
             <div className="space-y-3">
               <p className="text-sm leading-relaxed text-body">
-                Pas de souci : dépose simplement une capture de la colonne Results — Résultats,
+                Pas de souci : dépose simplement une capture de la colonne Results · Résultats,
                 nous la lirons pour toi.
               </p>
               <FileUploader
@@ -502,11 +483,7 @@ function MetaScreen() {
             Sans cette précision, un « résultat » peut signifier des choses très différentes d'une
             campagne à l'autre.
           </WhyNote>
-          <OptionToggle
-            label="Je ne trouve pas cette donnée"
-            checked={resultsMissing}
-            onToggle={toggleResultsMissing}
-          />
+          <MissingToggle flagKey={K.meta.resultsMissing} label="Je ne trouve pas cette donnée" />
         </div>
       </QuestionCard>
 
@@ -521,7 +498,7 @@ function MetaScreen() {
           title: "Aide",
           body: (
             <>
-              Tu peux avoir entendu parler du Meta Pixel — Pixel Meta ou de la Conversions API —
+              Tu peux avoir entendu parler du Meta Pixel · Pixel Meta ou de la Conversions API ·
               API de conversions. Si ces termes ne te disent rien, sélectionne simplement : Je ne
               sais pas.
             </>

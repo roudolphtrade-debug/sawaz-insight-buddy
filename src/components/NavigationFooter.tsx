@@ -36,16 +36,18 @@ export function NavigationFooter({
   note?: string | undefined;
 }) {
   const navigate = useNavigate();
-  const { saveStatus, flushAnswers, scopeStatus, retryScopeSync } = useCollection();
+  const { saveStatus, flushAnswers, scopeStatus, retryScopeSync, readOnly } = useCollection();
   const blocked = Boolean(blocker);
   const unavailable = busy || disabled;
 
   const saveNote =
     note ??
-    (saveStatus === "saving"
+    (readOnly
+      ? "Collecte transmise : consultation seule."
+      : saveStatus === "saving"
       ? "Enregistrement…"
       : saveStatus === "error"
-        ? "Échec de l'enregistrement — nouvelle tentative possible."
+        ? "Échec de l'enregistrement : nouvelle tentative possible."
         : saveStatus === "saved"
           ? "Enregistré."
           : DEFAULT_NOTE);
@@ -82,8 +84,9 @@ export function NavigationFooter({
             <div className="min-w-0">
               <p className="text-xs font-extrabold uppercase tracking-wide">Mode hors ligne</p>
               <p className="mt-0.5 text-sm font-semibold leading-relaxed">
-                Connexion impossible pour l'instant. Tes réponses restent enregistrées sur cet
-                appareil et seront transmises au serveur dès que la connexion reviendra.
+                Connexion impossible pour l'instant. Tes dernières réponses ne sont pas encore
+                enregistrées sur le serveur : garde cette page ouverte, elles seront envoyées dès
+                que la connexion reviendra.
               </p>
             </div>
             <button
@@ -113,7 +116,7 @@ export function NavigationFooter({
           </div>
         ) : null}
 
-        {saveStatus === "error" ? (
+        {saveStatus === "error" && !readOnly ? (
           <div
             role="alert"
             aria-live="assertive"

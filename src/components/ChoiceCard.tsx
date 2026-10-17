@@ -10,6 +10,7 @@ export function ChoiceCard({
   selected = false,
   hint,
   multi = false,
+  disabled = false,
   onSelect,
 }: {
   label: string;
@@ -18,6 +19,8 @@ export function ChoiceCard({
   selected?: boolean | undefined;
   hint?: string | undefined;
   multi?: boolean | undefined;
+  /** Consultation seule (collecte transmise) : la carte reste lisible, sans action. */
+  disabled?: boolean | undefined;
   onSelect?: (() => void) | undefined;
 }) {
   return (
@@ -25,8 +28,10 @@ export function ChoiceCard({
       type="button"
       role={multi ? "checkbox" : "radio"}
       aria-checked={selected}
+      disabled={disabled}
       onClick={onSelect}
       className={cn(
+        disabled && "cursor-default",
         "group grid w-full items-start gap-4 rounded-xl border p-4 text-left transition-all duration-200",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
         icon

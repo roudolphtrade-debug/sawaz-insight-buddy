@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { ChoiceGroup } from "@/components/ChoiceGroup";
 import { FileUploader } from "@/components/FileUploader";
 import { MetricCard } from "@/components/MetricCard";
+import { MissingToggle } from "@/components/MissingToggle";
 import { NavigationFooter } from "@/components/NavigationFooter";
-import { OptionToggle } from "@/components/OptionToggle";
 import { PathHint, ThreeSeconds, WhyNote } from "@/components/PathHint";
 import { QuestionCard } from "@/components/QuestionCard";
 import { SectionBlock } from "@/components/SectionBlock";
@@ -13,25 +13,20 @@ import { SawazCallout } from "@/components/SawazCallout";
 import { StepLayout } from "@/components/StepLayout";
 import { TextAnswer } from "@/components/TextAnswer";
 import { K, SLOT } from "@/lib/collection/keys";
-import {
-  useBoolAnswer,
-  useCollection,
-  useSingleChoice,
-  useTextAnswer,
-} from "@/lib/collection/store";
+import { useCollection, useSingleChoice, useTextAnswer } from "@/lib/collection/store";
 import { useStepAccessGuard } from "@/lib/collection/useStepAccessGuard";
 import { stepNeighbours } from "@/lib/steps";
 
 export const Route = createFileRoute("/collecte/contenus")({
   head: () => ({
     meta: [
-      { title: "Contenus YouTube — Rôle des vidéos LFTC" },
+      { title: "Contenus YouTube · Rôle des vidéos LFTC" },
       {
         name: "description",
         content:
           "Fonction des vidéos, zoom Guide VIP, 10 vidéos récentes, sources de trafic et nouveaux spectateurs vs spectateurs récurrents.",
       },
-      { property: "og:title", content: "Contenus YouTube — Rôle des vidéos LFTC" },
+      { property: "og:title", content: "Contenus YouTube · Rôle des vidéos LFTC" },
       {
         property: "og:description",
         content: "Distinguer les vidéos qui attirent, celles qui accompagnent les membres LFTC.",
@@ -62,8 +57,6 @@ function ContenusScreen() {
 
   const [membresVideos, setMembresVideos] = useSingleChoice(K.contenus.membresVideos);
   const [membresDetail, setMembresDetail] = useTextAnswer(K.contenus.membresDetail);
-  const [guideVipMissing, toggleGuideVipMissing] = useBoolAnswer(K.contenus.guideVipMissing);
-  const [skipDixVideos, toggleSkipDixVideos] = useBoolAnswer(K.contenus.skipDixVideos);
   const [traffic, setTraffic] = useSingleChoice(K.contenus.traffic);
   const [newReturning, setNewReturning] = useSingleChoice(K.contenus.newReturning);
 
@@ -111,11 +104,11 @@ function ContenusScreen() {
           <PathHint
             steps={[
               "YouTube Studio",
-              "Content — Contenu",
+              "Content · Contenu",
               "Guide pour les membres du groupe privé LFTC",
               "Analytics",
-              "Reach — Couverture",
-              "How viewers find this video — Comment les spectateurs trouvent cette vidéo",
+              "Reach · Couverture",
+              "How viewers find this video · Comment les spectateurs trouvent cette vidéo",
             ]}
           />
           <ThreeSeconds>
@@ -131,11 +124,7 @@ function ContenusScreen() {
             label="Dépose une capture de cet écran"
             accept="image/*,.pdf"
           />
-          <OptionToggle
-            label="Je ne trouve pas cette donnée"
-            checked={guideVipMissing}
-            onToggle={toggleGuideVipMissing}
-          />
+          <MissingToggle flagKey={K.contenus.guideVipMissing} label="Je ne trouve pas cette donnée" />
         </div>
       </QuestionCard>
 
@@ -143,11 +132,11 @@ function ContenusScreen() {
         number="Sources de trafic"
         status="optional"
         title="Comment les gens trouvent-ils tes vidéos ?"
-        description="YouTube peut notamment distinguer : YouTube Search — Recherche YouTube, Suggested Videos — Vidéos suggérées, Browse Features — Accueil / navigation, External — Sources externes. Cela nous aide à comprendre si LFTC dépend surtout de son audience actuelle ou si YouTube commence réellement à le recommander à de nouvelles personnes."
+        description="YouTube peut notamment distinguer : YouTube Search · Recherche YouTube, Suggested Videos · Vidéos suggérées, Browse Features · Accueil / navigation, External · Sources externes. Cela nous aide à comprendre si LFTC dépend surtout de son audience actuelle ou si YouTube commence réellement à le recommander à de nouvelles personnes."
       >
         <div className="space-y-4">
           <p className="text-sm font-semibold text-foreground">
-            Peux-tu voir la rubrique : « How viewers find your content/video — Comment les
+            Peux-tu voir la rubrique : « How viewers find your content/video · Comment les
             spectateurs trouvent ton contenu ? »
           </p>
           <ChoiceGroup
@@ -184,7 +173,7 @@ function ContenusScreen() {
           <PathHint steps={["YouTube Studio", "Content", "Choisir la vidéo", "Analytics"]} />
           <div className="grid gap-3 sm:grid-cols-3">
             <MetricCard
-              term="Reach — Couverture"
+              term="Reach · Couverture"
               meaning="Comment la vidéo a-t-elle été découverte ?"
             />
             <MetricCard
@@ -192,7 +181,7 @@ function ContenusScreen() {
               meaning="Combien de temps a-t-elle réellement retenu les spectateurs ?"
             />
             <MetricCard
-              term="Audience Retention — Rétention d'audience"
+              term="Audience Retention · Rétention d'audience"
               meaning="Où les spectateurs ont-ils commencé à décrocher ?"
             />
           </div>
@@ -201,10 +190,9 @@ function ContenusScreen() {
             label="Tu peux déposer toutes les captures ici en une seule fois"
             accept="image/*,.pdf"
           />
-          <OptionToggle
+          <MissingToggle
+            flagKey={K.contenus.skipDixVideos}
             label="Je préfère ne pas faire cette partie maintenant"
-            checked={skipDixVideos}
-            onToggle={toggleSkipDixVideos}
           />
         </div>
       </QuestionCard>
@@ -217,11 +205,11 @@ function ContenusScreen() {
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <MetricCard
-              term="New Viewers — Nouveaux spectateurs"
+              term="New Viewers · Nouveaux spectateurs"
               meaning="Personnes qui découvrent la chaîne."
             />
             <MetricCard
-              term="Returning Viewers — Spectateurs récurrents"
+              term="Returning Viewers · Spectateurs récurrents"
               meaning="Personnes qui avaient déjà regardé la chaîne et qui reviennent."
             />
           </div>

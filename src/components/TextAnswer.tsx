@@ -1,3 +1,5 @@
+import { useCollection } from "@/lib/collection/store";
+
 export function TextAnswer({
   label,
   placeholder,
@@ -13,6 +15,8 @@ export function TextAnswer({
   value: string;
   onChange: (value: string) => void;
 }) {
+  // Collecte transmise : réponse lisible, plus modifiable (miroir du verrou serveur).
+  const { readOnly } = useCollection();
   const className =
     "mt-2 w-full rounded-xl border border-border-strong bg-surface-raised px-4 py-3.5 text-sm text-foreground shadow-sm transition-all placeholder:text-muted-foreground/70 hover:border-border-strong focus:border-primary focus:bg-surface focus:outline-none focus:ring-4 focus:ring-primary/10";
 
@@ -37,6 +41,7 @@ export function TextAnswer({
           className={`${className} min-h-32 resize-y`}
           placeholder={placeholder ?? "Écris ta réponse ici…"}
           value={value}
+          readOnly={readOnly}
           onChange={(e) => onChange(e.target.value)}
         />
       ) : (
@@ -45,6 +50,7 @@ export function TextAnswer({
           className={className}
           placeholder={placeholder ?? "Écris ta réponse ici…"}
           value={value}
+          readOnly={readOnly}
           onChange={(e) => onChange(e.target.value)}
         />
       )}

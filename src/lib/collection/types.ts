@@ -10,6 +10,9 @@ export type FileMeta = {
   remoteId?: string;
   /** Upload en cours vers le bucket privé. */
   pending?: boolean;
+  /** Suppression en cours de vérification côté serveur (fichier jamais confirmé dont
+   *  l'objet a pu être écrit) — voir `removeFile` dans le store. */
+  removing?: boolean;
   /** Message d'erreur d'envoi (format, taille, réseau…). `undefined` explicite pour
    *  effacer une erreur précédente lors d'une reprise réussie (`exactOptionalPropertyTypes`). */
   error?: string | undefined;

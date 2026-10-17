@@ -4,6 +4,7 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { StepTabs } from "@/components/StepTabs";
 import { SawazMark } from "@/components/brand/Logos";
+import { useCollection } from "@/lib/collection/store";
 import type { StepId } from "@/lib/steps";
 
 export function StepLayout({
@@ -18,6 +19,9 @@ export function StepLayout({
   children: ReactNode;
 }) {
   const showLegend = step === "youtube" || step === "contenus" || step === "meta";
+  // Collecte transmise : chaque étape reste consultable, en lecture seule (le serveur
+  // refuse de toute façon toute écriture sur une submission figée).
+  const { readOnly } = useCollection();
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,6 +43,15 @@ export function StepLayout({
           de `sm:`, où il redevient sticky avec sa réserve d'origine. */}
       <main className="collecte-shell px-4 pt-6 pb-6 sm:px-5 sm:pt-8 sm:pb-20">
         <StepTabs current={step} />
+
+        {readOnly && step !== "validation" ? (
+          <p
+            role="status"
+            className="mt-6 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm font-semibold text-foreground"
+          >
+            Ta collecte a été transmise : tes réponses sont désormais en consultation seule.
+          </p>
+        ) : null}
 
         <div className="mt-8">
           <h1 className="font-display text-2xl font-extrabold leading-tight text-balance sm:text-4xl">

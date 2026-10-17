@@ -45,8 +45,8 @@ export function StepTabs({ current }: { current: StepId }) {
           const locked = !unlocked;
           const lockReason = LOCK_REASON[step.id];
           const ariaLabel = locked
-            ? `${step.label} — verrouillé. ${lockReason ?? ""}`.trim()
-            : `${step.label} — ${STATE_LABEL[sectionState]}`;
+            ? `${step.label} : verrouillé. ${lockReason ?? ""}`.trim()
+            : `${step.label} : ${STATE_LABEL[sectionState]}`;
 
           const itemClass = cn(
             "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",

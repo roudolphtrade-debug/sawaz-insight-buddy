@@ -9,7 +9,9 @@ import { QuestionCard } from "@/components/QuestionCard";
 import { SawazCallout } from "@/components/SawazCallout";
 import { StatusList } from "@/components/StatusList";
 import { StepLayout } from "@/components/StepLayout";
+import { FileTransferPanel } from "@/components/FileTransferPanel";
 import { collectionService } from "@/lib/collection/collectionService";
+import { fileProblems } from "@/lib/collection/rules";
 import { allSummaries, metaBlocker, metaIssues, youtubeBlocker, youtubeIssues } from "@/lib/collection/status";
 import { useCollection } from "@/lib/collection/store";
 import { useStepAccessGuard } from "@/lib/collection/useStepAccessGuard";
@@ -18,13 +20,13 @@ import { stepNeighbours } from "@/lib/steps";
 export const Route = createFileRoute("/collecte/validation")({
   head: () => ({
     meta: [
-      { title: "Validation — Fin de la première vague | LFTC" },
+      { title: "Validation · Fin de la première vague | LFTC" },
       {
         name: "description",
         content:
           "Récapitulatif de la première vague de données YouTube et Meta, puis envoi des éléments à l'équipe Sawaz.",
       },
-      { property: "og:title", content: "Validation — Fin de la première vague" },
+      { property: "og:title", content: "Validation · Fin de la première vague" },
       {
         property: "og:description",
         content: "Vérifie et envoie tes éléments YouTube et Meta pour LFTC.",
@@ -47,6 +49,8 @@ function ValidationScreen() {
     scopeStatus,
     getExpectedScope,
     reportSessionMismatch,
+    reportSessionInvalid,
+    refresh,
     markAttempted,
     markVisited,
   } = useCollection();
@@ -65,7 +69,17 @@ function ValidationScreen() {
   // Mêmes règles obligatoires que les étapes précédentes (partagées avec le serveur
   // dans session.server.ts) : un fichier encore en attente ou en échec y compte
   // désormais comme non transmis, donc bloque aussi la transmission finale ici.
-  const blocker = youtubeBlocker(state) ?? metaBlocker(state);
+  // Fichiers présents mais pas (encore) transmis — en cours d'envoi, en échec, ou à
+  // re-sélectionner : la transmission attend qu'ils soient confirmés ou retirés, pour
+  // qu'aucun fichier ne soit perdu sans que l'utilisateur le sache.
+  const transferProblems = fileProblems(state);
+  const filesBlocker =
+    transferProblems.length === 0
+      ? null
+      : transferProblems.some((p) => p.kind === "pending")
+        ? "Un fichier est encore en cours d'envoi : attends la fin de l'envoi avant de transmettre."
+        : "Un fichier n'a pas pu être transmis : réessaie son envoi ou supprime-le avant de transmettre.";
+  const blocker = youtubeBlocker(state) ?? metaBlocker(state) ?? filesBlocker;
   // Liste complète (pas seulement la première) des questions manquantes, chacune
   // menant vers l'étape YouTube ou Meta concernée via une ancre `#<id>` lue par cette
   // page au montage (voir collecte.youtube.tsx / collecte.meta.tsx).
@@ -118,12 +132,20 @@ function ValidationScreen() {
       // La décision de transmettre se fonde sur le résultat réel du flush et sur une
       // lecture directe de la file d'attente, jamais sur `saveStatus` (état React
       // potentiellement pas encore re-rendu au moment de cet appel).
+      if (fileProblems(state).length > 0) {
+        setSendError(
+          "Certains fichiers ne sont pas encore transmis. Attends la fin de leur envoi, réessaie ou supprime-les, puis relance la transmission.",
+        );
+        return;
+      }
+
       const flushResult = await flushAnswers();
       if (!flushResult.ok) {
         // Un SESSION_MISMATCH déclenche déjà la bannière globale « Session changée »
         // (gérée par `handleSessionMismatch()` dans le store, affichée par
-        // `NavigationFooter`) : répéter le même message ici serait redondant.
-        if (flushResult.code !== "SESSION_MISMATCH") {
+        // `NavigationFooter`), un SESSION_INVALID l'écran « lien plus actif » : répéter
+        // le même message ici serait redondant.
+        if (flushResult.code !== "SESSION_MISMATCH" && flushResult.code !== "SESSION_INVALID") {
           setSendError(
             "Certaines réponses n'ont pas pu être synchronisées avec le serveur. Réessaie dans un instant.",
           );
@@ -151,9 +173,20 @@ function ValidationScreen() {
       } else if (res.code === "SESSION_MISMATCH") {
         // Même raison que pour `flushResult` ci-dessus : la bannière globale suffit.
         reportSessionMismatch();
+      } else if (res.code === "SESSION_INVALID") {
+        reportSessionInvalid();
       } else {
         setSendError(res.error);
       }
+    } catch {
+      // Panne réseau ou réponse illisible : on ne sait pas si le serveur a enregistré la
+      // transmission. L'utilisateur reste sur cette page avec un message explicite ; un
+      // nouvel essai est sans risque (la transmission serveur est idempotente), et une
+      // relecture de l'état serveur affiche la confirmation si elle a en réalité abouti.
+      setSendError(
+        "La transmission n'a pas pu être confirmée : la connexion a été interrompue. Tes réponses sont conservées. Vérifie ta connexion puis réessaie : si la transmission avait déjà abouti, elle ne sera pas enregistrée deux fois.",
+      );
+      refresh();
     } finally {
       submitLockRef.current = false;
       setSending(false);
@@ -246,6 +279,8 @@ function ValidationScreen() {
               }}
             />
           ) : null}
+
+          <FileTransferPanel problems={transferProblems} />
 
           {sendError ? (
             <div
