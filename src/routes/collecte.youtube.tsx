@@ -49,19 +49,19 @@ export const Route = createFileRoute("/collecte/youtube")({
 const captures = [
   {
     id: "yt-capture-overview",
-    title: "Overview · Vue d'ensemble",
+    title: "Vue d'ensemble (Overview)",
     slot: SLOT.ytOverview,
     missingKey: K.yt.missingOverview,
-    path: ["YouTube Studio", "Analytics", "Overview · Vue d'ensemble"],
+    path: ["YouTube Studio", "Analytics", "Vue d'ensemble (Overview)"],
     seconds: "Une vue globale des performances de ta chaîne.",
     why: "Pour comprendre la performance générale de YouTube sur la période.",
   },
   {
     id: "yt-capture-content",
-    title: "Content · Contenu",
+    title: "Contenu (Content)",
     slot: SLOT.ytContent,
     missingKey: K.yt.missingContent,
-    path: ["YouTube Studio", "Analytics", "Content · Contenu"],
+    path: ["YouTube Studio", "Analytics", "Contenu (Content)"],
     seconds: "L'écran qui montre comment tes contenus sont exposés et consommés.",
     why: "Pour observer notamment les vues, impressions et clics.",
   },
@@ -78,7 +78,7 @@ const captures = [
 
 const lexique = [
   {
-    term: "Views · Vues",
+    term: "Vues (Views)",
     meaning: "Combien de fois tes contenus ont réellement été regardés ?",
     why: "Pour mesurer le volume d'attention généré par YouTube.",
   },
@@ -88,22 +88,22 @@ const lexique = [
     why: "Pour savoir quelle exposition YouTube accorde réellement à LFTC.",
   },
   {
-    term: "CTR · Click-Through Rate (taux de clic)",
+    term: "Taux de clic (CTR · Click-Through Rate)",
     meaning: "Quand YouTube montre ta miniature, combien de personnes cliquent ?",
     why: "Pour mesurer l'efficacité du duo titre + miniature.",
   },
   {
-    term: "Watch Time · Temps de visionnage",
+    term: "Temps de visionnage (Watch Time)",
     meaning: "Combien de temps les spectateurs passent-ils réellement devant tes vidéos ?",
     why: "Un clic n'a de valeur que si la personne reste.",
   },
   {
-    term: "Average View Duration · Durée moyenne de visionnage",
+    term: "Durée moyenne de visionnage (Average View Duration)",
     meaning: "Pendant combien de temps regarde-t-on une vidéo en moyenne ?",
     why: "Pour comparer la capacité des différents formats à retenir l'attention.",
   },
   {
-    term: "Audience Retention · Rétention d'audience",
+    term: "Rétention d'audience (Audience Retention)",
     meaning: "À quel moment les spectateurs commencent-ils à quitter une vidéo ?",
     why: "Pour identifier précisément les passages qui maintiennent ou font perdre l'attention.",
   },
@@ -149,7 +149,7 @@ function YoutubeScreen() {
     <StepLayout
       step="youtube"
       title="YouTube · Comprendre la qualité de l'audience"
-      intro="Tu nous as indiqué que YouTube semble t'apporter moins de volume que Meta, mais des personnes plus qualitatives. Nous allons vérifier cette intuition."
+      intro="Tu nous as indiqué avoir l’impression que YouTube génère moins de volume que Meta, mais attire des profils potentiellement plus qualifiés. Nous allons vérifier cette hypothèse à partir des données."
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
         <div className="space-y-3 text-sm leading-relaxed text-body">
@@ -164,7 +164,7 @@ function YoutubeScreen() {
           <ul className="space-y-1">
             <li>→ YouTube te fait-il découvrir par de nouvelles personnes ?</li>
             <li>→ Quels contenus donnent réellement envie de rester ?</li>
-            <li>→ Quelles vidéos transforment le mieux un spectateur ?</li>
+            <li>→ Quelles vidéos semblent le mieux faire progresser un spectateur vers LFTC ?</li>
             <li>→ Quelles vidéos servent surtout à accompagner les membres existants ?</li>
           </ul>
         </div>
@@ -234,11 +234,11 @@ function YoutubeScreen() {
               : undefined
           }
           title="Option recommandée · Export YouTube"
-          description="Dans YouTube Studio → Analytics, cherche : Advanced Mode · Mode avancé, puis l'option permettant d'exporter les données. Sélectionne idéalement 365 derniers jours. Puis télécharge le fichier disponible en CSV ou Excel."
+          description="Dans YouTube Studio → Analytics, cherche : Mode avancé (Advanced Mode), puis l'option permettant d'exporter les données. Sélectionne idéalement 365 derniers jours. Puis télécharge le fichier disponible en CSV ou Excel."
         >
           <div className="space-y-4">
             <PathHint
-              steps={["YouTube Studio", "Analytics", "Advanced Mode · Mode avancé", "Export"]}
+              steps={["YouTube Studio", "Analytics", "Mode avancé (Advanced Mode)", "Export"]}
             />
             <p className="text-sm leading-relaxed text-sawaz">
               <span className="font-semibold">Pourquoi l'export ? </span>
