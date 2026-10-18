@@ -94,7 +94,7 @@ export function StepLayout({
               en visibilité sans concurrencer les logos juste au-dessus ; point médian
               conservé tel quel (deux informations courtes de même niveau). */}
           <p className="text-xs font-medium text-sawaz">
-            Sawaz Décodage · Décodage stratégique LFTC
+            Sawaz Intelligence · Accompagnement stratégique LFTC
           </p>
           <p className="text-[11px] text-muted-foreground/70">© 2026 Sawaz Entertainment</p>
         </div>
