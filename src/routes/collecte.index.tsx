@@ -13,17 +13,17 @@ import { stepNeighbours } from "@/lib/steps";
 export const Route = createFileRoute("/collecte/")({
   head: () => ({
     meta: [
-      { title: "LFTC · Mettre des chiffres derrière les intuitions" },
+      { title: "LFTC · Relevé stratégique d’acquisition | Sawaz Intelligence" },
       {
         name: "description",
         content:
           "Phase 1 · Étape 2 : première vague de collecte de données LFTC, consacrée uniquement à YouTube et Meta. Environ 15 minutes.",
       },
-      { property: "og:title", content: "LFTC · Mettre des chiffres derrière les intuitions" },
+      { property: "og:title", content: "LFTC · Relevé stratégique d’acquisition" },
       {
         property: "og:description",
         content:
-          "Première vague de données YouTube + Meta pour LFTC, accompagnée par Sawaz Décodage.",
+          "Vague 1 de collecte YouTube & Meta pour LFTC, accompagnée par Sawaz Intelligence.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -68,8 +68,8 @@ function IntroductionScreen() {
   return (
     <StepLayout
       step="introduction"
-      title="LFTC · Mettre des chiffres derrière les intuitions"
-      intro="Phase 1 · Étape 2 - Première vague de données : YouTube + Meta"
+      title="LFTC · Relevé stratégique d’acquisition"
+      intro="Phase 1 · Étape 2 · Vague 1 · YouTube & Meta"
     >
       <section className="surface-panel p-5 sm:p-6">
         <div className="flex flex-wrap gap-2">
@@ -80,11 +80,12 @@ function IntroductionScreen() {
           </StatusBadge>
         </div>
         <div className="mt-4 space-y-3 text-sm leading-relaxed text-body">
-          <p>Ton questionnaire nous a donné ta lecture de LFTC.</p>
           <p>
-            Nous allons maintenant regarder ce que les comportements et les chiffres nous racontent.
+            Tes premières réponses nous ont permis de mieux comprendre ta lecture de LFTC.
           </p>
-          <p>Temps estimé : environ 15 minutes.</p>
+          <p>
+            Nous allons maintenant la confronter aux données YouTube et Meta pour mettre des chiffres derrière les premières intuitions.
+          </p>
         </div>
         <Disclosure className="mt-4" label="Pourquoi cette première vague" hint="Lire le détail">
           <div className="space-y-3 text-sm leading-relaxed text-body">
@@ -107,7 +108,7 @@ function IntroductionScreen() {
 
       <Disclosure
         label="Ce que tes réponses commencent déjà à nous montrer"
-        hint="Retour court sur le questionnaire · facultatif à lire maintenant"
+        hint="Retour court sur tes premières réponses · facultatif à lire maintenant"
         tone="neutral"
       >
         <div className="grid gap-3">
@@ -134,7 +135,7 @@ function IntroductionScreen() {
       <NavigationFooter
         previous={previous}
         next={next}
-        nextLabel="Commencer mon décodage"
+        nextLabel="Commencer la collecte"
         note="Tu ne trouves pas une donnée ? Ne perds pas de temps. Indique simplement qu'elle n'est pas disponible et continue."
       />
     </StepLayout>
