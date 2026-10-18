@@ -1,7 +1,7 @@
 import { LftcLogo, SawazMark } from "@/components/brand/Logos";
 
 type BrandHeaderProps = {
-  /** Short context line, e.g. "Sawaz Décodage". */
+  /** Short context line, e.g. "Sawaz Intelligence". */
   context?: string;
 };
 
@@ -11,7 +11,7 @@ type BrandHeaderProps = {
  * (`ProgressBar`), qui porte seule le `sticky`/fond/bordure partagés (une seule zone
  * fixe, sans valeur `top` codée en dur).
  */
-export function BrandHeader({ context = "Sawaz Décodage" }: BrandHeaderProps) {
+export function BrandHeader({ context = "Sawaz Intelligence" }: BrandHeaderProps) {
   return (
     <header>
       {/* `flex-wrap` + `justify-center` par défaut : si l'espace vient à manquer (très
