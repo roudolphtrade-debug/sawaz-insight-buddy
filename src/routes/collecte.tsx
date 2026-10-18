@@ -4,6 +4,9 @@ import { CollectionProvider, useCollection } from "@/lib/collection/store";
 import { useCollectionNavGuard } from "@/lib/collection/useCollectionNavGuard";
 
 export const Route = createFileRoute("/collecte")({
+  head: () => ({
+    meta: [{ name: "robots", content: "noindex, nofollow" }],
+  }),
   component: CollecteLayout,
 });
 
