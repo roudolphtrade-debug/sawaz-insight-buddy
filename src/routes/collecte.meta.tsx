@@ -33,13 +33,13 @@ import { stepNeighbours } from "@/lib/steps";
 export const Route = createFileRoute("/collecte/meta")({
   head: () => ({
     meta: [
-      { title: "Meta · Comprendre le moteur de volume | LFTC" },
+      { title: "Meta · Comprendre ce qui génère le volume | LFTC" },
       {
         name: "description",
         content:
           "Période, objectif de campagne, destination, résultats et suivi des conversions dans le gestionnaire de publicités Meta.",
       },
-      { property: "og:title", content: "Meta · Comprendre le moteur de volume" },
+      { property: "og:title", content: "Meta · Comprendre ce qui génère le volume" },
       {
         property: "og:description",
         content: "Collecte des données Meta Ads pour comprendre le rôle réel de Meta chez LFTC.",
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/collecte/meta")({
 
 const lexique = [
   {
-    term: "Amount Spent · Montant dépensé",
+    term: "Montant dépensé (Amount Spent)",
     meaning: "Combien as-tu réellement investi sur la période ?",
   },
   {
@@ -61,35 +61,35 @@ const lexique = [
     meaning: "Combien de fois tes publicités ont été affichées ?",
   },
   {
-    term: "Reach · Couverture",
+    term: "Couverture (Reach)",
     meaning: "Combien de personnes différentes ont vu tes publicités ?",
   },
   {
-    term: "CTR · Click-Through Rate (taux de clic)",
+    term: "Taux de clic (CTR · Click-Through Rate)",
     meaning: "Combien de personnes cliquent après avoir vu la publicité ?",
   },
   {
-    term: "CPC · Cost Per Click (coût par clic)",
+    term: "Coût par clic (CPC · Cost Per Click)",
     meaning: "Combien coûte un clic en moyenne ?",
   },
   {
-    term: "CPM · Cost Per Mille (coût pour mille impressions)",
+    term: "Coût pour mille impressions (CPM · Cost Per Mille)",
     meaning: "Combien coûte 1 000 affichages ?",
   },
   {
-    term: "Frequency · Fréquence",
+    term: "Fréquence (Frequency)",
     meaning: "Combien de fois une même personne voit ta publicité en moyenne ?",
   },
   {
-    term: "Link Clicks · Clics sur le lien",
+    term: "Clics sur le lien (Link Clicks)",
     meaning: "Combien de personnes ont cliqué sur ton lien ?",
   },
   {
-    term: "Landing Page Views · Vues de page de destination",
+    term: "Vues de page de destination (Landing Page Views)",
     meaning: "Combien de personnes ont réellement chargé ta page après le clic ?",
   },
   {
-    term: "Cost per Result · Coût par résultat",
+    term: "Coût par résultat (Cost per Result)",
     meaning: "Combien te coûte en moyenne chaque résultat obtenu ?",
   },
 ];
@@ -143,11 +143,11 @@ function MetaScreen() {
   return (
     <StepLayout
       step="meta"
-      title="Meta · Comprendre le moteur de volume"
+      title="Meta · Comprendre ce qui génère le volume"
     >
       <section className="surface-panel space-y-4 p-5 sm:p-6">
         <div className="space-y-2 text-sm leading-relaxed text-body">
-          <p>Tu nous as indiqué que Meta semble apporter beaucoup plus de volume que YouTube.</p>
+          <p>Tu nous as indiqué observer davantage de volume via Meta que via YouTube. Nous allons maintenant comprendre ce qui produit ce volume et ce qu’il génère réellement.</p>
           <p>Nous voulons maintenant comprendre :</p>
           <ul className="space-y-1">
             <li>→ combien ce volume coûte ;</li>
@@ -217,7 +217,7 @@ function MetaScreen() {
         number="Question 02"
         status="required"
         error={issueMessage("meta-objectifs")}
-        title="Quel est ou quels sont les principaux objectifs utilisés sur tes campagnes LFTC ?"
+        title="Quels sont les principaux objectifs utilisés dans tes campagnes LFTC ?"
         description="Dans Meta, cela s'appelle : Campaign Objective · Objectif de campagne."
         help={{
           title: "Où trouver la donnée",
@@ -270,7 +270,7 @@ function MetaScreen() {
           options={[
             { value: "landing", label: "Landing page LFTC" },
             { value: "telegram", label: "Telegram public directement" },
-            { value: "conversation", label: "Conversation-message" },
+            { value: "conversation", label: "Conversation / message" },
             { value: "autre-page", label: "Autre page" },
             // Retirée : le choix multiple exprime déjà plusieurs destinations. Conservée
             // en lecture pour les réponses déjà enregistrées avec cette valeur.
@@ -334,25 +334,25 @@ function MetaScreen() {
               : undefined
           }
           title="Option recommandée · Export Meta"
-          description="Dans le gestionnaire de publicités : Reports · Rapports, puis Export. Sélectionne la période choisie, puis télécharge le fichier en CSV ou Excel."
+          description="Dans le gestionnaire de publicités : Rapports (Reports), puis Export. Sélectionne la période choisie, puis télécharge le fichier en CSV ou Excel."
         >
           <div className="space-y-4">
-            <PathHint steps={["Gestionnaire de publicités", "Reports · Rapports", "Export"]} />
+            <PathHint steps={["Gestionnaire de publicités", "Rapports (Reports)", "Export"]} />
             <div className="rounded-xl border border-border bg-surface-raised p-4">
               <p className="text-eyebrow text-sawaz">Colonnes utiles dans l'export</p>
               <ul className="mt-2 grid gap-1 text-sm leading-relaxed text-body sm:grid-cols-2">
                 {[
-                  "Amount Spent · Montant dépensé",
+                  "Montant dépensé (Amount Spent)",
                   "Impressions",
-                  "Reach · Couverture",
+                  "Couverture (Reach)",
                   "CTR · Taux de clic",
                   "CPC · Coût par clic",
                   "CPM · Coût pour mille",
-                  "Frequency · Fréquence",
-                  "Link Clicks · Clics sur le lien",
-                  "Landing Page Views · Vues de page de destination",
-                  "Results · Résultats",
-                  "Cost per Result · Coût par résultat",
+                  "Fréquence (Frequency)",
+                  "Clics sur le lien (Link Clicks)",
+                  "Vues de page de destination (Landing Page Views)",
+                  "Résultats (Results)",
+                  "Coût par résultat (Cost per Result)",
                 ].map((col) => (
                   <li key={col}>→ {col}</li>
                 ))}
@@ -388,7 +388,7 @@ function MetaScreen() {
         >
           <div className="space-y-4">
             <PathHint
-              steps={["Gestionnaire de publicités", "Campaigns · Campagnes", "Période choisie"]}
+              steps={["Gestionnaire de publicités", "Campagnes (Campaigns)", "Période choisie"]}
             />
             <ThreeSeconds>
               Le tableau qui montre, campagne par campagne, ce que tu as dépensé et ce que tu as
@@ -397,7 +397,7 @@ function MetaScreen() {
             {mode === "guide" ? (
               <ol className="grid gap-2 text-sm leading-relaxed text-body">
                 <li>1. Ouvre le gestionnaire de publicités Meta depuis ton ordinateur.</li>
-                <li>2. Va dans Campaigns · Campagnes.</li>
+                <li>2. Va dans Campagnes (Campaigns).</li>
                 <li>3. En haut à droite, sélectionne la période choisie.</li>
                 <li>4. Fais une capture du tableau avec les colonnes de performance visibles.</li>
               </ol>
@@ -426,24 +426,24 @@ function MetaScreen() {
 
       <SectionBlock
         eyebrow="Bloc 3"
-        title="Results et suivi"
+        title="Résultats et suivi"
         description="Ce que Meta compte comme résultat, et ce qui est réellement mesuré après le clic."
       >
       <QuestionCard
         id="meta-results"
         highlighted={highlightedId === "meta-results"}
-        number="Results"
+        number="Résultats"
         status="required"
         error={issueMessage("meta-results")}
-        title="Results · Résultats"
-        description="Dans Meta, la colonne Results · Résultats indique le nombre d'actions obtenues selon l'objectif de la campagne."
+        title="Résultats"
+        description="Dans Meta, cette donnée apparaît dans la colonne « Results (Résultats) » et indique le nombre d’actions obtenues selon l’objectif de la campagne."
       >
         <div className="space-y-4">
           <ThreeSeconds>
             Ce que tu as réellement obtenu : des prospects, des clics, des messages ou des ventes.
           </ThreeSeconds>
           <MultiChoiceGroup
-            label="Que compte exactement la colonne Results dans tes campagnes ?"
+            label="Que compte exactement la colonne Résultats dans tes campagnes ?"
             values={results}
             onToggle={toggleResult}
             options={[
@@ -461,7 +461,7 @@ function MetaScreen() {
           />
           {results.includes("autre") ? (
             <TextAnswer
-              label="Précise ce que compte la colonne Results"
+              label="Précise ce que compte la colonne Résultats"
               value={resultsAutre}
               onChange={setResultsAutre}
             />
@@ -469,12 +469,12 @@ function MetaScreen() {
           {results.includes("inconnu") ? (
             <div className="space-y-3">
               <p className="text-sm leading-relaxed text-body">
-                Pas de souci : dépose simplement une capture de la colonne Results · Résultats,
+                Pas de souci : dépose simplement une capture de la colonne Résultats,
                 nous la lirons pour toi.
               </p>
               <FileUploader
                 slot={SLOT.metaResults}
-                label="Dépose une capture de la colonne Results"
+                label="Dépose une capture de la colonne Résultats"
                 accept="image/*,.pdf"
               />
             </div>
