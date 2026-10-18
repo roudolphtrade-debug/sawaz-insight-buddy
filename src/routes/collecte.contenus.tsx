@@ -94,7 +94,7 @@ function ContenusScreen() {
         number="Zoom Guide VIP"
         title="Un zoom particulier sur ton Guide VIP"
         optional
-        description="Nous avons identifié la vidéo « Guide pour les membres du groupe privé LFTC » comme un contenu particulier. Elle semble principalement servir à accompagner les membres après leur entrée dans l'écosystème. Nous voulons comprendre d'où viennent réellement ses vues."
+        description="Nous avons identifié la vidéo « Guide pour les membres du groupe privé LFTC » comme un contenu particulier. Notre première analyse suggère qu’elle pourrait principalement accompagner les membres déjà entrés dans l’écosystème LFTC. Nous voulons le vérifier en regardant l’origine de ses vues."
         help={{
           title: "Important mais non bloquant",
           body: "Cette demande est importante mais ne doit pas bloquer le formulaire. Si tu ne trouves pas l'écran, coche simplement l'option.",
@@ -104,11 +104,11 @@ function ContenusScreen() {
           <PathHint
             steps={[
               "YouTube Studio",
-              "Content · Contenu",
+              "Contenu (Content)",
               "Guide pour les membres du groupe privé LFTC",
               "Analytics",
-              "Reach · Couverture",
-              "How viewers find this video · Comment les spectateurs trouvent cette vidéo",
+              "Couverture (Reach)",
+              "Comment les spectateurs trouvent cette vidéo (How viewers find this video)",
             ]}
           />
           <ThreeSeconds>
@@ -116,8 +116,8 @@ function ContenusScreen() {
             Telegram / LFTC ?
           </ThreeSeconds>
           <WhyNote>
-            Cela nous permettra de savoir si YouTube sert ici d'outil d'acquisition ou
-            d'infrastructure pédagogique pour les membres.
+            Pour déterminer si cette vidéo sert principalement à faire découvrir LFTC ou à accompagner
+            des membres déjà présents.
           </WhyNote>
           <FileUploader
             slot={SLOT.guideVip}
@@ -132,12 +132,11 @@ function ContenusScreen() {
         number="Sources de trafic"
         status="optional"
         title="Comment les gens trouvent-ils tes vidéos ?"
-        description="YouTube peut notamment distinguer : YouTube Search · Recherche YouTube, Suggested Videos · Vidéos suggérées, Browse Features · Accueil / navigation, External · Sources externes. Cela nous aide à comprendre si LFTC dépend surtout de son audience actuelle ou si YouTube commence réellement à le recommander à de nouvelles personnes."
+        description="YouTube peut notamment distinguer : Recherche YouTube (YouTube Search), Vidéos suggérées (Suggested Videos), Accueil / navigation (Browse Features), Sources externes (External). Cela nous aide à comprendre si LFTC dépend surtout de son audience actuelle ou si YouTube commence réellement à le recommander à de nouvelles personnes."
       >
         <div className="space-y-4">
           <p className="text-sm font-semibold text-foreground">
-            Peux-tu voir la rubrique : « How viewers find your content/video · Comment les
-            spectateurs trouvent ton contenu ? »
+            Peux-tu voir la rubrique : « Comment les spectateurs trouvent ton contenu ? (How viewers find your content/video) »
           </p>
           <ChoiceGroup
             label="Sources de trafic disponibles"
@@ -173,7 +172,7 @@ function ContenusScreen() {
           <PathHint steps={["YouTube Studio", "Content", "Choisir la vidéo", "Analytics"]} />
           <div className="grid gap-3 sm:grid-cols-3">
             <MetricCard
-              term="Reach · Couverture"
+              term="Couverture (Reach)"
               meaning="Comment la vidéo a-t-elle été découverte ?"
             />
             <MetricCard
@@ -181,7 +180,7 @@ function ContenusScreen() {
               meaning="Combien de temps a-t-elle réellement retenu les spectateurs ?"
             />
             <MetricCard
-              term="Audience Retention · Rétention d'audience"
+              term="Rétention d'audience (Audience Retention)"
               meaning="Où les spectateurs ont-ils commencé à décrocher ?"
             />
           </div>
@@ -198,18 +197,18 @@ function ContenusScreen() {
       </QuestionCard>
 
       <QuestionCard
-        number="New vs Returning Viewers"
+        number="Nouveaux vs récurrents"
         status="optional"
         title="Nouveaux spectateurs vs spectateurs qui reviennent"
       >
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <MetricCard
-              term="New Viewers · Nouveaux spectateurs"
+              term="Nouveaux spectateurs (New Viewers)"
               meaning="Personnes qui découvrent la chaîne."
             />
             <MetricCard
-              term="Returning Viewers · Spectateurs récurrents"
+              term="Spectateurs récurrents (Returning Viewers)"
               meaning="Personnes qui avaient déjà regardé la chaîne et qui reviennent."
             />
           </div>
@@ -220,7 +219,7 @@ function ContenusScreen() {
           <PathHint steps={["YouTube Studio", "Analytics", "Audience"]} title="Où" />
           <p className="text-sm font-semibold text-foreground">As-tu accès à cette donnée ?</p>
           <ChoiceGroup
-            label="Accès à New vs Returning Viewers"
+            label="Accès aux nouveaux spectateurs et spectateurs récurrents"
             value={newReturning}
             onChange={setNewReturning}
             options={[...ouiNon, { value: "introuvable", label: "Je ne la trouve pas" }]}
