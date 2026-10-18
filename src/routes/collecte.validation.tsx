@@ -204,11 +204,11 @@ function ValidationScreen() {
   return (
     <StepLayout
       step="validation"
-      title={sent ? "Tes éléments ont bien été envoyés." : "Tu as terminé. À nous maintenant."}
+      title={sent ? "Tes éléments ont bien été transmis." : "Tout est prêt pour la transmission"}
       intro={
         sent
           ? "La collecte est terminée et enregistrée. Tu n'as plus aucune action à effectuer."
-          : "Merci. Nous avons maintenant les éléments nécessaires pour commencer à comparer YouTube et Meta sur autre chose que le volume brut."
+          : "Vérifie une dernière fois les éléments ci-dessous, puis transmets-les à Sawaz."
       }
     >
       {sent ? (
@@ -249,7 +249,7 @@ function ValidationScreen() {
               <div className="space-y-2 border-t border-border pt-4 text-sm leading-relaxed text-body">
                 <p>Nous ne tirerons pas encore de conclusion stratégique à partir de ces données seules.</p>
                 <p>
-                  Elles seront croisées avec ton questionnaire et avec ce que nous avons déjà observé
+                  Elles seront croisées avec tes premières réponses et avec ce que nous avons déjà observé
                   sur l'écosystème LFTC.
                 </p>
               </div>
