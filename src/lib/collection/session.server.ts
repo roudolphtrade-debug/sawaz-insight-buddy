@@ -348,12 +348,6 @@ export async function persistAnswers(
   const submission = await requireWorkingSubmission(session);
   assertExpectedSubmission(submission, expected);
 
-  await supabaseAdmin
-    .from("answers")
-    .delete()
-    .eq("submission_id", submission.id)
-    .in("question_key", keys);
-
   const rows = keys.map((key) => ({
     submission_id: submission.id,
     collection_id: session.collectionId,
@@ -363,7 +357,12 @@ export async function persistAnswers(
     not_found: answers[key] === true && key.toLowerCase().includes("missing"),
   }));
 
-  const { error } = await supabaseAdmin.from("answers").insert(rows);
+  // La base garantit l'unicité de (submission_id, question_key). Un UPSERT
+  // remplace donc chaque réponse en une seule écriture, sans fenêtre DELETE -> INSERT
+  // pendant laquelle une panne pourrait supprimer la valeur précédemment confirmée.
+  const { error } = await supabaseAdmin
+    .from("answers")
+    .upsert(rows, { onConflict: "submission_id,question_key" });
   if (error) throw new SessionError("Sauvegarde refusée");
   return rows.length;
 }
