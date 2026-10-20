@@ -47,6 +47,7 @@ function ValidationScreen() {
     flushAnswers,
     hasPendingAnswers,
     scopeStatus,
+    demoMode,
     getExpectedScope,
     reportSessionMismatch,
     reportSessionInvalid,
@@ -112,6 +113,13 @@ function ValidationScreen() {
     setSendError(null);
 
     try {
+      // En démonstration, la transmission finale est une simulation locale : aucun
+      // flush, aucun appel submit et aucune écriture distante ne sont autorisés.
+      if (demoMode) {
+        markSubmitted(Date.now());
+        return;
+      }
+
       // La transmission ne doit jamais démarrer tant que le serveur n'a pas confirmé
       // exactement la même portée que celle affichée — vérifié explicitement ici, car
       // `flushAnswers()` réussit trivialement (rien en file) si aucune réponse n'a
@@ -204,11 +212,21 @@ function ValidationScreen() {
   return (
     <StepLayout
       step="validation"
-      title={sent ? "Tes éléments ont bien été transmis." : "Tout est prêt pour la transmission"}
+      title={
+        sent
+          ? demoMode
+            ? "Démonstration terminée"
+            : "Tes éléments ont bien été transmis."
+          : "Tout est prêt pour la transmission"
+      }
       intro={
         sent
-          ? "La collecte est terminée et enregistrée. Tu n'as plus aucune action à effectuer."
-          : "Vérifie une dernière fois les éléments ci-dessous, puis transmets-les à Sawaz."
+          ? demoMode
+            ? "La simulation est terminée. Aucune information n'a été envoyée ni enregistrée chez Sawaz."
+            : "La collecte est terminée et enregistrée. Tu n'as plus aucune action à effectuer."
+          : demoMode
+            ? "Teste librement cette dernière étape : la transmission restera entièrement locale."
+            : "Vérifie une dernière fois les éléments ci-dessous, puis transmets-les à Sawaz."
       }
     >
       {sent ? (
@@ -218,17 +236,27 @@ function ValidationScreen() {
               <CheckCircle2 className="size-6 text-primary" aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-eyebrow text-primary">Envoi confirmé</p>
+              <p className="text-eyebrow text-primary">
+                {demoMode ? "Simulation confirmée" : "Envoi confirmé"}
+              </p>
               <h2 className="mt-1 font-display text-xl font-extrabold text-foreground sm:text-2xl">
-                C'est reçu.
+                {demoMode ? "Aucune donnée envoyée." : "C'est reçu."}
               </h2>
               <div className="mt-3 space-y-2 text-sm leading-relaxed text-body">
-                <p>Nous avons bien reçu tes réponses et les fichiers transmis.</p>
+                <p>
+                  {demoMode
+                    ? "Tu viens de parcourir la fin de l'expérience telle qu'elle se présente au client, sans écriture dans la base de données."
+                    : "Nous avons bien reçu tes réponses et les fichiers transmis."}
+                </p>
                 <p className="font-semibold text-foreground">
-                  Tu n'as plus rien à faire sur cette page. Tu peux maintenant la fermer.
+                  {demoMode
+                    ? "Tu peux recommencer la démonstration en rechargeant la page d'entrée."
+                    : "Tu n'as plus rien à faire sur cette page. Tu peux maintenant la fermer."}
                 </p>
                 {sentAt ? (
-                  <p className="pt-1 text-xs text-muted-foreground">Envoyé le {sentAt}.</p>
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    {demoMode ? "Simulation terminée le" : "Envoyé le"} {sentAt}.
+                  </p>
                 ) : null}
               </div>
             </div>
