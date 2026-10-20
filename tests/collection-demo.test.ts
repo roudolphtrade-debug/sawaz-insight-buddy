@@ -14,6 +14,7 @@ const validationSource = readFileSync(
   join(import.meta.dir, "..", "src", "routes", "collecte.validation.tsx"),
   "utf8",
 );
+const normalizedStoreSource = storeSource.replace(/\r\n/g, "\n");
 
 describe("mode démonstration sans écriture distante", () => {
   test("le paramètre demo est explicite et conservé pendant la navigation", () => {
@@ -32,10 +33,16 @@ describe("mode démonstration sans écriture distante", () => {
   });
 
   test("les réponses et fichiers démo restent locaux", () => {
-    expect(storeSource).toContain("if (demoRef.current) {\n      pendingAnswers.current = {};");
-    expect(storeSource).toContain("remoteId: `demo:${id}`");
-    expect(storeSource).toContain("if (demoRef.current) {\n        collectionService.forgetFile(id);");
-    expect(storeSource).toContain("if (demoRef.current) return;\n    void collectionService.snapshot()");
+    expect(normalizedStoreSource).toContain(
+      "if (demoRef.current) {\n      pendingAnswers.current = {};",
+    );
+    expect(normalizedStoreSource).toContain("remoteId: `demo:${id}`");
+    expect(normalizedStoreSource).toContain(
+      "if (demoRef.current) {\n        collectionService.forgetFile(id);",
+    );
+    expect(normalizedStoreSource).toContain(
+      "if (demoRef.current) return;\n    void collectionService.snapshot()",
+    );
   });
 
   test("la transmission finale démo ne peut pas appeler submit", () => {
