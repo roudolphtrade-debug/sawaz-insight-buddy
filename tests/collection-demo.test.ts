@@ -18,7 +18,7 @@ const normalizedStoreSource = storeSource.replace(/\r\n/g, "\n");
 
 describe("mode démonstration sans écriture distante", () => {
   test("le paramètre demo est explicite et conservé pendant la navigation", () => {
-    expect(layoutSource).toContain('demo: search.demo === "1" ? "1" : undefined');
+    expect(layoutSource).toContain('search["demo"] === "1" ? { demo: "1" } : {}');
     expect(layoutSource).toContain('retainSearchParams(["demo"])');
     expect(layoutSource).toContain("<CollectionProvider demoMode={demoMode}>");
   });
