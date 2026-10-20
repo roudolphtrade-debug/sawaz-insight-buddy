@@ -74,6 +74,8 @@ type Ctx = {
   remoteStatus: RemoteStatus;
   saveStatus: SaveStatus;
   scopeStatus: ScopeStatus;
+  /** Mode de présentation strictement local : aucun appel serveur ni écriture distante. */
+  demoMode: boolean;
   /** Retente la confirmation de portée (utile après un échec réseau initial). */
   retryScopeSync: () => void;
   /** Signale un `SESSION_MISMATCH` reçu directement par un appelant hors du store
@@ -247,7 +249,13 @@ async function callSafely(call: () => Promise<SnapshotResult>): Promise<Snapshot
   }
 }
 
-export function CollectionProvider({ children }: { children: ReactNode }) {
+export function CollectionProvider({
+  children,
+  demoMode = false,
+}: {
+  children: ReactNode;
+  demoMode?: boolean;
+}) {
   const [state, setState] = useState<CollectionState>(emptyState);
   const [hydrated, setHydrated] = useState(false);
   const [remoteStatus, setRemoteStatus] = useState<RemoteStatus>("idle");
@@ -257,6 +265,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const [visitedSteps, setVisitedSteps] = useState<ReadonlySet<StepId>>(() => new Set());
   const [completedSteps, setCompletedSteps] = useState<ReadonlySet<StepId>>(() => new Set());
   const hydratedRef = useRef(false);
+  /** Figé pour toute la durée de vie du Provider. En démonstration, chaque chemin
+   *  susceptible d'écrire à distance s'arrête avant tout appel à collectionService. */
+  const demoRef = useRef(demoMode);
   const onlineRef = useRef(false);
   const pendingAnswers = useRef<Record<string, AnswerValue>>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -318,6 +329,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
 
   /** Persiste la liste courante des réponses non confirmées pour la portée connue. */
   const persistUnconfirmed = useCallback(() => {
+    if (demoRef.current) return;
     const scopeId = scopeIdRef.current ?? pointerScopeIdRef.current;
     if (!scopeId) return;
     collectionService.saveUnconfirmed(scopeId, unconfirmedRef.current);
@@ -416,6 +428,28 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     let cancelled = false;
+
+    // Démonstration : aucune ouverture de lien, aucun snapshot et aucune session
+    // serveur. La portée est simulée comme confirmée uniquement pour permettre de
+    // parcourir l'interface. Un éventuel token présent dans l'URL est supprimé sans
+    // jamais être envoyé au serveur.
+    if (demoRef.current) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("t")) {
+        url.searchParams.delete("t");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      }
+      onlineRef.current = true;
+      scopeConfirmedRef.current = true;
+      scopeStatusRef.current = "confirmed";
+      setScopeStatus("confirmed");
+      setRemoteStatus("online");
+      hydratedRef.current = true;
+      setHydrated(true);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const setScope = (next: ScopeStatus) => {
       scopeStatusRef.current = next;
@@ -656,6 +690,13 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
    *   `submitted`.
    */
   const runFlushChain = useCallback(async (): Promise<FlushResult> => {
+    if (demoRef.current) {
+      pendingAnswers.current = {};
+      unconfirmedRef.current = {};
+      if (mountedRef.current) setSaveStatus("saved");
+      return { ok: true };
+    }
+
     let result: FlushResult = { ok: true };
     let confirmedAtLeastOneBatch = false;
 
@@ -949,6 +990,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
    *  entre `addFiles`, `flushQueuedFileUploads` et `retryFile`. */
   const startUpload = useCallback(
     (slot: string, meta: FileMeta, file: File) => {
+      if (demoRef.current) {
+        patchFile(slot, meta.id, { pending: false });
+        return;
+      }
       const expected = expectedScopeRef.current;
       if (!expected) {
         patchFile(slot, meta.id, {
@@ -1008,6 +1053,25 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       if (files.length === 0) return;
       if (scopeStatusRef.current === "mismatch") return;
       if (scopeStatusRef.current === "invalid" || submittedRef.current) return;
+
+      if (demoRef.current) {
+        const metas: FileMeta[] = files.map((file) => {
+          const id = newId();
+          return {
+            id,
+            remoteId: `demo:${id}`,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            addedAt: Date.now(),
+          };
+        });
+        setState((prev) => ({
+          ...prev,
+          files: { ...prev.files, [slot]: [...(prev.files[slot] ?? []), ...metas] },
+        }));
+        return;
+      }
 
       // Tant que la portée n'est pas confirmée, le fichier est enregistré localement
       // (visible, en attente) mais aucun import ne démarre — il sera repris par
@@ -1150,6 +1214,12 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       if (!meta) return "not-found";
       if (meta.pending || meta.removing) return "busy";
 
+      if (demoRef.current) {
+        collectionService.forgetFile(id);
+        dropFile(slot, id);
+        return "removed";
+      }
+
       if (!meta.remoteId && !meta.uploadPath) {
         collectionService.forgetFile(id);
         dropFile(slot, id);
@@ -1220,6 +1290,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, [persistUnconfirmed]);
 
   const refresh = useCallback(() => {
+    if (demoRef.current) return;
     void collectionService.snapshot().then((res) => {
       // Résolution tardive possible après démontage (voir `runFlushChain`) : aucune
       // mise à jour React ne doit s'exécuter dans ce cas.
@@ -1297,6 +1368,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       remoteStatus,
       saveStatus,
       scopeStatus,
+      demoMode,
       retryScopeSync,
       reportSessionMismatch,
       reportSessionInvalid,
@@ -1324,6 +1396,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       remoteStatus,
       saveStatus,
       scopeStatus,
+      demoMode,
       retryScopeSync,
       reportSessionMismatch,
       reportSessionInvalid,
