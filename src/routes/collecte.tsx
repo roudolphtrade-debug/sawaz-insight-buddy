@@ -8,9 +8,8 @@ type CollecteSearch = {
 };
 
 export const Route = createFileRoute("/collecte")({
-  validateSearch: (search: Record<string, unknown>): CollecteSearch => ({
-    demo: search.demo === "1" ? "1" : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): CollecteSearch =>
+    search["demo"] === "1" ? { demo: "1" } : {},
   search: {
     middlewares: [retainSearchParams(["demo"])],
   },
