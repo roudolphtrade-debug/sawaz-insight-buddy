@@ -340,7 +340,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
           sourceFileId: m.source_file_id,
           sourceFileName: m.source_file_id ? (fileById.get(m.source_file_id) ?? null) : null,
           confidence: m.confidence === null ? null : Number(m.confidence),
-          reviewStatus: m.review_status,
+          reviewStatus: m.review_status as any,
           originalValueNum: m.original_value_num === null ? null : Number(m.original_value_num),
           originalValueText: m.original_value_text,
           reviewNote: m.review_note,
