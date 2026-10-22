@@ -210,35 +210,56 @@
   animation: rise 0.8s cubic-bezier(0.32, 0.72, 0, 1) 0.12s both;
 }
 
-/* Accueil du Results Studio uniquement — identité numérique Sawaz. */
-.studio-home {
-  --background: #061426;
-  --foreground: #f3f8fc;
-  --body: #cbdbe8;
-  --surface: #0a1c31;
-  --surface-raised: #102842;
-  --card: #0a1c31;
-  --card-foreground: #f3f8fc;
-  --muted: #102842;
-  --muted-foreground: #91a9bc;
-  --border: color-mix(in oklab, var(--sawaz) 16%, transparent);
-  --border-strong: color-mix(in oklab, var(--sawaz) 28%, transparent);
-  background-image:
-    radial-gradient(
-      circle at 8% 0%,
-      color-mix(in oklab, var(--sawaz) 15%, transparent),
-      transparent 30rem
-    ),
-    linear-gradient(155deg, #061426 0%, #07182b 48%, #071322 100%);
+/*
+ * Sawaz Pilot — identité 100 % Sawaz, limitée aux écrans internes (classe .pilot).
+ * Zone de travail claire, navigation bleu nuit, bleu électrique pour l'interaction.
+ * Vert / orange / rouge réservés aux statuts. Les écrans de collecte ne sont pas concernés.
+ */
+.pilot {
+  --background: #f5f7fa;
+  --foreground: #0f1e2e;
+  --body: #2b3a4a;
+  --surface: #ffffff;
+  --surface-raised: #f1f4f8;
+  --card: #ffffff;
+  --card-foreground: #0f1e2e;
+  --popover: #ffffff;
+  --popover-foreground: #0f1e2e;
+  --primary: #0a84e6;
+  --primary-foreground: #ffffff;
+  --sawaz: #0a6fc4;
+  --sawaz-foreground: #ffffff;
+  --secondary: #eef2f6;
+  --secondary-foreground: #0f1e2e;
+  --muted: #eef2f6;
+  --muted-foreground: #5b6b7c;
+  --accent: #0a84e6;
+  --accent-foreground: #ffffff;
+  --border: #dde3ea;
+  --border-strong: #c3ccd6;
+  --input: #c3ccd6;
+  --ring: #0a84e6;
+  --signal: #0a6fc4;
+  --good: #1f8a4c;
+  --warn: #b86e00;
+  --bad: #c4352b;
+  --destructive: #c4352b;
+  --shadow-elevated: 0 1px 2px rgb(15 30 46 / 6%), 0 4px 12px -6px rgb(15 30 46 / 10%);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --nav: #0f1e2e;
+  --nav-foreground: #e6edf4;
+  --nav-muted: #93a4b6;
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
-.studio-home .studio-client-table {
-  background: linear-gradient(
-    145deg,
-    color-mix(in oklab, var(--surface) 94%, var(--sawaz)),
-    var(--surface) 58%
-  );
-  box-shadow:
-    0 24px 70px -36px color-mix(in oklab, var(--sawaz) 38%, transparent),
-    0 16px 44px -28px rgb(0 0 0 / 80%);
+.pilot :focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.pilot .surface-panel {
+  box-shadow: var(--shadow-elevated);
+  border-radius: var(--radius-lg);
 }

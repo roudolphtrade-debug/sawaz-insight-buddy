@@ -196,7 +196,7 @@ function ReviewBuilder() {
       ...charts,
       {
         id: uid(),
-        title: "Métriques validées",
+        title: "Indicateurs validés",
         type: "bar",
         sourceMetricIds: selected.map((m) => m.id),
         periodStart: selected[0]?.periodStart ?? null,
@@ -268,7 +268,7 @@ function ReviewBuilder() {
             {locked ? "Créer une nouvelle version" : "Enregistrer"}
           </Button>
           {!isOwner ? (
-            <StatusBadge tone="neutral">Publication réservée au rôle owner</StatusBadge>
+            <StatusBadge tone="neutral">Partage réservé au rôle owner</StatusBadge>
           ) : null}
           {locked ? (
             <StatusBadge tone="sawaz">
@@ -403,7 +403,7 @@ function ReviewBuilder() {
               />
               <div className="mt-3">
                 <p className="text-eyebrow text-muted-foreground">
-                  Métriques sources (validées uniquement)
+                  Indicateurs sources (validés uniquement)
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {ws.metrics.map((m) => {

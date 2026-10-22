@@ -225,7 +225,7 @@ export function ReviewPreview({
                   </div>
                   {showProvenance ? (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Métriques sources :{" "}
+                      Indicateurs sources :{" "}
                       {c.sourceMetricIds.map((id) => metricLabel.get(id) ?? id).join(", ")} ·
                       période {c.periodStart ?? "—"} → {c.periodEnd ?? "—"} · généré le{" "}
                       {new Date(c.generatedAt).toLocaleDateString("fr-FR")}

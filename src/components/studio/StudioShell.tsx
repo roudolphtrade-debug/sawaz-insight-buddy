@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { SawazMark } from "@/components/brand/Logos";
+import { SawazPilotMark } from "@/components/brand/PilotMark";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,39 @@ function SignOutButton() {
   );
 }
 
-/** Coque interne Sawaz, identique quel que soit le client consulté. */
+const navLink =
+  "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-[var(--nav-muted)] transition hover:bg-white/5 hover:text-[var(--nav-foreground)]";
+const navActive = { className: "bg-white/10 text-[var(--nav-foreground)]" };
+
+/** Navigation principale Sawaz Pilot (Vue d'ensemble · Clients · Missions · Collectes). */
+function PilotNav() {
+  return (
+    <nav aria-label="Navigation principale" className="flex gap-1 overflow-x-auto lg:flex-col">
+      <Link
+        to="/studio"
+        activeOptions={{ exact: true }}
+        activeProps={navActive}
+        className={navLink}
+      >
+        Vue d’ensemble
+      </Link>
+      <Link to="/studio" activeProps={navActive} className={navLink}>
+        Clients
+      </Link>
+      <span aria-disabled="true" className={cn(navLink, "cursor-not-allowed opacity-60 hover:bg-transparent")}>
+        Missions
+        <span className="rounded border border-white/15 px-1.5 text-[0.625rem] tracking-wide uppercase">
+          bientôt
+        </span>
+      </span>
+      <Link to="/collecte" className={navLink}>
+        Collectes
+      </Link>
+    </nav>
+  );
+}
+
+/** Coque Sawaz Pilot : navigation sombre bleu nuit, zone de travail claire, identique pour tous les clients. */
 export function StudioShell({
   title,
   subtitle,
@@ -63,54 +95,36 @@ export function StudioShell({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("min-h-screen bg-background", className)}>
-      <header className="border-b border-border bg-surface/60 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link to="/studio" className="flex items-center gap-3">
-            <SawazMark />
-            <span className="leading-tight">
-              <span className="block font-display text-sm font-extrabold text-foreground">
-                Results Studio
-              </span>
-              <span className="text-eyebrow text-sawaz">Interne Sawaz</span>
-            </span>
+    <div className={cn("pilot min-h-screen lg:flex", className)}>
+      <aside className="flex flex-col gap-4 bg-[var(--nav)] px-4 py-4 text-[var(--nav-foreground)] lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:gap-8 lg:py-6">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/studio" aria-label="Sawaz Pilot — accueil" className="rounded-md">
+            <SawazPilotMark tone="dark" />
           </Link>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <nav className="flex items-center gap-1 rounded-xl border border-border bg-surface-raised/65 p-1 text-sm text-muted-foreground">
-              <Link
-                to="/studio"
-                activeOptions={{ exact: true }}
-                activeProps={{ className: "bg-sawaz/15 text-sawaz" }}
-                className="rounded-lg px-3 py-2 font-semibold transition hover:bg-sawaz/10 hover:text-foreground"
-              >
-                Dossiers clients
-              </Link>
-              <Link
-                to="/collecte"
-                className="rounded-lg px-3 py-2 font-semibold transition hover:bg-sawaz/10 hover:text-foreground"
-              >
-                Collectes
-              </Link>
-            </nav>
-
+          <div className="lg:hidden">
             <SignOutButton />
           </div>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-              {title}
-            </h1>
-            {subtitle ? <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p> : null}
-          </div>
-          {actions}
+        <PilotNav />
+        <div className="mt-auto hidden lg:block">
+          <SignOutButton />
         </div>
+      </aside>
 
-        <div className="mt-8 space-y-6">{children}</div>
+      <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+            <div>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+                {title}
+              </h1>
+              {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+            </div>
+            {actions}
+          </div>
+
+          <div className="mt-6 space-y-5">{children}</div>
+        </div>
       </main>
     </div>
   );

@@ -12,16 +12,16 @@ import { listStudioClients, studioBootstrap } from "@/lib/studio/studio.function
 export const Route = createFileRoute("/_authenticated/studio/")({
   head: () => ({
     meta: [
-      { title: "Results Studio — Espace interne Sawaz" },
+      { title: "Clients — Sawaz Pilot" },
       {
         name: "description",
         content:
-          "Espace interne Sawaz : suivi multi-client des collectes réelles, fichiers reçus, métriques et analyses.",
+          "Espace interne Sawaz : pilotage des missions clients, collectes, réponses, indicateurs et analyses Sawaz.",
       },
-      { property: "og:title", content: "Results Studio — Espace interne Sawaz" },
+      { property: "og:title", content: "Clients — Sawaz Pilot" },
       {
         property: "og:description",
-        content: "Suivi multi-client des collectes réelles et des analyses Sawaz.",
+        content: "Pilotage des missions clients Sawaz.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -55,11 +55,10 @@ function StudioIndex() {
 
   return (
     <StudioShell
-      className="studio-home"
-      title="Dossiers clients"
-      subtitle="Pilotez les projets, collectes et restitutions de chaque client depuis un espace unique."
+      title="Clients"
+      subtitle="Pilotez les missions, collectes et restitutions de chaque client depuis un espace unique."
     >
-      {isLoading ? <Panel>Chargement des dossiers…</Panel> : null}
+      {isLoading ? <Panel>Chargement des clients…</Panel> : null}
 
       {data && !data.ok ? (
         <Panel>
@@ -77,16 +76,16 @@ function StudioIndex() {
       ) : null}
 
       {clients.length > 0 ? (
-        <section className="studio-client-table overflow-hidden rounded-2xl border border-border shadow-elevated">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-elevated">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] border-collapse text-left">
               <thead>
-                <tr className="border-b border-border bg-surface-raised/80">
+                <tr className="border-b border-border bg-surface-raised">
                   <HeaderCell className="min-w-72">Client</HeaderCell>
-                  <HeaderCell icon={<FolderKanban />}>Projets</HeaderCell>
+                  <HeaderCell icon={<FolderKanban />}>Missions</HeaderCell>
                   <HeaderCell icon={<Layers3 />}>Collectes</HeaderCell>
-                  <HeaderCell icon={<Inbox />}>Soumissions</HeaderCell>
-                  <HeaderCell icon={<FileStack />}>Fichiers</HeaderCell>
+                  <HeaderCell icon={<Inbox />}>Réponses</HeaderCell>
+                  <HeaderCell icon={<FileStack />}>Documents</HeaderCell>
                   <HeaderCell>Restitution</HeaderCell>
                   <HeaderCell className="text-right">Action</HeaderCell>
                 </tr>
@@ -97,7 +96,7 @@ function StudioIndex() {
                     key={client.id}
                     className="group border-b border-border transition last:border-b-0 hover:bg-sawaz/[0.055]"
                   >
-                    <td className="px-5 py-5">
+                    <td className="px-5 py-3.5">
                       <div className="flex items-center gap-4">
                         <ClientLogo name={client.name} slug={client.slug} />
                         <div className="min-w-0">
@@ -112,33 +111,33 @@ function StudioIndex() {
                     </td>
                     <MetricCell value={client.projects} />
                     <MetricCell value={client.collections} />
-                    <td className="px-4 py-5">
+                    <td className="px-4 py-3.5">
                       <p className="font-display text-base font-extrabold text-foreground">
                         {client.submitted}
                         <span className="ml-1 font-sans text-xs font-medium text-muted-foreground">
                           / {client.submissions}
                         </span>
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">finalisées</p>
+                      <p className="mt-1 text-xs text-muted-foreground">reçues</p>
                     </td>
                     <MetricCell value={client.files} />
-                    <td className="px-4 py-5">
+                    <td className="px-4 py-3.5">
                       <StatusBadge tone={client.reviewPublished ? "gold" : "sawaz"}>
-                        {client.reviewPublished ? "Restitution publiée" : "Restitution non publiée"}
+                        {client.reviewPublished ? "Restitution partagée" : "Restitution non partagée"}
                       </StatusBadge>
                       {client.metricsToReview > 0 ? (
                         <p className="mt-2 text-xs text-muted-foreground">
-                          {client.metricsToReview} métrique(s) à vérifier
+                          {client.metricsToReview} indicateur(s) à vérifier
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-5 py-5 text-right">
+                    <td className="px-5 py-3.5 text-right">
                       <Link
                         to="/studio/$clientId"
                         params={{ clientId: client.slug }}
-                        className="inline-flex items-center gap-2 rounded-xl bg-sawaz px-4 py-2.5 text-sm font-extrabold whitespace-nowrap text-sawaz-foreground shadow-[0_10px_28px_-14px_var(--color-sawaz)] transition hover:-translate-y-0.5 hover:bg-sawaz/90 focus-visible:outline-sawaz"
+                        className="inline-flex items-center gap-2 rounded-md bg-sawaz px-3.5 py-2 text-sm font-semibold whitespace-nowrap text-sawaz-foreground transition hover:bg-sawaz/90"
                       >
-                        Ouvrir le dossier
+                        Ouvrir
                         <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
                       </Link>
                     </td>
@@ -148,7 +147,7 @@ function StudioIndex() {
             </table>
           </div>
           <div className="flex items-center justify-between gap-4 border-t border-border bg-surface-raised/35 px-5 py-3 text-xs text-muted-foreground">
-            <span>{clients.length} dossier(s) client</span>
+            <span>{clients.length} client(s)</span>
             <span>Données actualisées depuis les collectes</span>
           </div>
         </section>
@@ -181,7 +180,7 @@ function HeaderCell({
 
 function MetricCell({ value }: { value: number }) {
   return (
-    <td className="px-4 py-5">
+    <td className="px-4 py-3.5">
       <span className="font-display text-lg font-extrabold text-foreground">{value}</span>
     </td>
   );
@@ -192,15 +191,15 @@ function ClientLogo({ name, slug }: { name: string; slug: string }) {
 
   if (isLftc) {
     return (
-      <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-sawaz/20 bg-white px-2.5 shadow-sm">
+      <span className="grid size-11 shrink-0 place-items-center rounded-md border border-border bg-surface px-2.5 shadow-sm">
         <LftcLogo className="[&>span]:hidden [&_img]:h-auto [&_img]:max-h-8 [&_img]:max-w-full" />
       </span>
     );
   }
 
   return (
-    <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-sawaz/25 bg-sawaz/10 text-sawaz">
-      <Building2 className="size-6" aria-hidden="true" />
+    <span className="grid size-11 shrink-0 place-items-center rounded-md border border-border bg-surface-raised text-sawaz">
+      <Building2 className="size-5" aria-hidden="true" />
       <span className="sr-only">Logo de {name}</span>
     </span>
   );

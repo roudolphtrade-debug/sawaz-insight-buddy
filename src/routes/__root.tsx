@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -34,7 +35,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -77,14 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sawaz Client Intelligence" },
+      { title: "Sawaz Pilot" },
       {
         name: "description",
         content:
-          "Sawaz Client Intelligence turns account signals into a defensible read on client risk, relationship health, and the next move — before the risk hits.",
+          "Sawaz Pilot turns account signals into a defensible read on client risk, relationship health, and the next move — before the risk hits.",
       },
       { name: "author", content: "Sawaz" },
-      { property: "og:title", content: "Sawaz Client Intelligence" },
+      { property: "og:title", content: "Sawaz Pilot" },
       {
         property: "og:description",
         content:

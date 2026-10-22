@@ -73,8 +73,8 @@ export function ReviewsPanel({
   return (
     <Panel
       eyebrow="5. Restitution client"
-      title="Restitution stratégique (Strategic Review)"
-      aside={<StatusBadge tone="neutral">Aucun accès client avant publication</StatusBadge>}
+      title="Restitution stratégique"
+      aside={<StatusBadge tone="neutral">Aucun accès client avant partage</StatusBadge>}
     >
       <p className="text-sm leading-relaxed text-muted-foreground">
         La restitution est préparée à partir des métriques validées et des analyses destinées au

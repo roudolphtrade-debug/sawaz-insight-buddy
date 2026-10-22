@@ -105,9 +105,9 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
   const missing = submission.answers.filter((a) => a.notFound);
 
   const submissionTitle = submission.submittedAt
-    ? `Soumission du ${formatDate(submission.submittedAt)}`
+    ? `Réponse reçue le ${formatDate(submission.submittedAt)}`
     : submission.respondent
-      ? `Collecte — ${submission.respondent}`
+      ? `En cours — ${submission.respondent}`
       : "Collecte en cours";
 
   async function open(fileId: string, mode: "download" | "preview") {
@@ -178,7 +178,7 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
 
       <div className="mt-6 border-t border-border pt-5">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-eyebrow text-sawaz">Pièces transmises</h3>
+          <h3 className="text-eyebrow text-sawaz">Documents transmis</h3>
           <span className="text-xs text-muted-foreground">
             {submission.files.length} fichier{submission.files.length > 1 ? "s" : ""}
           </span>
@@ -235,7 +235,7 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
           ))}
 
           {submission.files.length === 0 ? (
-            <li className="text-sm text-muted-foreground">Aucun fichier reçu.</li>
+            <li className="text-sm text-muted-foreground">Aucun document reçu.</li>
           ) : null}
         </ul>
       </div>

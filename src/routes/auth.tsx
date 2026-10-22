@@ -1,17 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 
-import { SawazMark } from "@/components/brand/Logos";
+import { SawazPilotMark } from "@/components/brand/PilotMark";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Connexion équipe — Sawaz Results Studio" },
+      { title: "Connexion — Sawaz Pilot" },
       {
         name: "description",
         content:
-          "Accès réservé à l’équipe Sawaz : connexion sécurisée au Results Studio interne multi-client.",
+          "Accès réservé à l’équipe Sawaz : connexion sécurisée à Sawaz Pilot.",
       },
     ],
   }),
@@ -49,21 +49,18 @@ function AuthPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4 py-12">
+    <div className="pilot grid min-h-screen place-items-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
-          <SawazMark />
+          <SawazPilotMark tone="light" />
           <span className="leading-tight">
-            <span className="block font-display text-sm font-extrabold text-foreground">
-              Results Studio
-            </span>
             <span className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
               Accès équipe Sawaz
             </span>
           </span>
         </div>
 
-        <form onSubmit={submit} className="glass rounded-2xl space-y-4 p-6">
+        <form onSubmit={submit} className="surface-panel space-y-4 p-6">
           <h1 className="font-display text-xl font-extrabold text-foreground">
             Connexion
           </h1>

@@ -55,7 +55,7 @@ export async function consumeRateLimit(
   subject: string,
 ): Promise<boolean> {
   const { limit, windowSeconds } = RATE_LIMITS[bucket];
-  const { data, error } = await supabaseAdmin.rpc("consume_rate_limit", {
+  const { data, error } = await (supabaseAdmin.rpc as any)("consume_rate_limit", {
     _bucket: bucket,
     _subject: subject,
     _limit: limit,
