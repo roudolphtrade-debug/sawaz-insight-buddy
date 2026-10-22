@@ -289,7 +289,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
         })),
         collections: (collections.data ?? []).map((c) => ({
           id: c.id,
-          projectId: c.project_id,
+          projectId: c.project_id ?? "",
           status: c.status,
           openedAt: c.opened_at,
         })),
@@ -328,7 +328,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
         }),
         metrics: (metrics.data ?? []).map((m) => ({
           id: m.id,
-          submissionId: m.submission_id,
+          submissionId: m.submission_id ?? "",
           metricKey: m.metric_key,
           platform: m.platform,
           valueNum: m.value_num === null ? null : Number(m.value_num),
@@ -348,7 +348,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
         })),
         analyses: (analyses.data ?? []).map((a) => ({
           id: a.id,
-          type: a.type,
+          type: a.type as StudioAnalysis["type"],
           title: a.title,
           body: a.body,
           visibility: a.visibility,
@@ -434,7 +434,7 @@ export const saveStudioAnalysis = createServerFn({ method: "POST" })
       ok: true,
       data: {
         id: row.id,
-        type: row.type,
+        type: row.type as StudioAnalysis["type"],
         title: row.title,
         body: row.body,
         visibility: row.visibility,
@@ -536,7 +536,7 @@ export const reviewStudioMetric = createServerFn({ method: "POST" })
       ok: true,
       data: {
         id: row.id,
-        submissionId: row.submission_id,
+        submissionId: row.submission_id ?? "",
         metricKey: row.metric_key,
         platform: row.platform,
         valueNum: row.value_num === null ? null : Number(row.value_num),
@@ -548,7 +548,7 @@ export const reviewStudioMetric = createServerFn({ method: "POST" })
         sourceFileId: row.source_file_id,
         sourceFileName: null,
         confidence: row.confidence === null ? null : Number(row.confidence),
-        reviewStatus: row.review_status,
+        reviewStatus: row.review_status as any,
         originalValueNum: row.original_value_num === null ? null : Number(row.original_value_num),
         originalValueText: row.original_value_text,
         reviewNote: row.review_note,

@@ -84,7 +84,7 @@ function SetPasswordPage() {
       return;
     }
 
-    const { error: claimError } = await supabase.rpc("claim_team_access");
+    const { error: claimError } = await (supabase.rpc as any)("claim_team_access");
 
     if (claimError) {
       setBusy(false);
