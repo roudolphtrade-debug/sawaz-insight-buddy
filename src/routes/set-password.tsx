@@ -101,11 +101,8 @@ function SetPasswordPage() {
     <div className="pilot grid min-h-screen place-items-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
-          <SawazMark />
+          <SawazPilotMark tone="light" />
           <span className="leading-tight">
-            <span className="block font-display text-sm font-extrabold text-foreground">
-              Results Studio
-            </span>
             <span className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
               Activation de votre accès
             </span>
