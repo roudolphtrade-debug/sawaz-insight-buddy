@@ -66,19 +66,19 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
 
   return (
     <Panel
-      eyebrow="Publication"
+      eyebrow="Partager"
       title="Accès client"
       aside={
         state.publishedVersionNo ? (
           <StatusBadge tone="gold">Publiée — v{state.publishedVersionNo}</StatusBadge>
         ) : (
-          <StatusBadge tone="neutral">Non publiée</StatusBadge>
+          <StatusBadge tone="neutral">Non partagée</StatusBadge>
         )
       }
     >
       <dl className="grid gap-3 sm:grid-cols-3">
         <div>
-          <dt className="text-eyebrow text-muted-foreground">Date de publication</dt>
+          <dt className="text-eyebrow text-muted-foreground">Date de partage</dt>
           <dd className="text-sm text-foreground">{date(state.publishedAt)}</dd>
         </div>
         <div>
@@ -137,7 +137,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <div>
-          <p className="text-eyebrow text-muted-foreground">Historique des publications</p>
+          <p className="text-eyebrow text-muted-foreground">Historique des partages</p>
           <ul className="mt-2 space-y-1.5">
             {state.history.map((h) => (
               <li key={h.versionNo} className="text-sm text-muted-foreground">
@@ -145,7 +145,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
               </li>
             ))}
             {state.history.length === 0 ? (
-              <li className="text-sm text-muted-foreground">Aucune publication.</li>
+              <li className="text-sm text-muted-foreground">Aucun partage.</li>
             ) : null}
           </ul>
         </div>

@@ -80,7 +80,7 @@ export function AnalysesPanel({
 
   return (
     <div className="space-y-6">
-      <Panel eyebrow="4. Analyse Sawaz" title="Constats, hypothèses et recommandations">
+      <Panel eyebrow="4. Analyse Sawaz · interprétation" title="Constats, hypothèses et recommandations" className="border-l-4 border-l-sawaz">
         <p className="mb-4 text-sm text-muted-foreground">
           Cette zone transforme les données collectées en enseignements exploitables. Seuls les
           éléments destinés au client pourront alimenter la restitution.
@@ -116,7 +116,7 @@ export function AnalysesPanel({
 
       <Panel
         eyebrow="Confidentiel"
-        title="Notes internes Sawaz"
+        title="Notes internes"
         className="border-dashed"
         aside={<StatusBadge tone="neutral">Jamais visibles côté client</StatusBadge>}
       >

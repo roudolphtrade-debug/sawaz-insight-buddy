@@ -43,8 +43,8 @@ export function MetricsReviewPanel({
 
   return (
     <Panel
-      eyebrow="3. Données extraites"
-      title="Revue et validation des métriques"
+      eyebrow="3. Indicateurs · ce que les données montrent"
+      title="Vérification des indicateurs"
       aside={
         <StatusBadge tone="neutral">
           {metrics.filter((m) => m.reviewStatus === "a_verifier").length} à vérifier

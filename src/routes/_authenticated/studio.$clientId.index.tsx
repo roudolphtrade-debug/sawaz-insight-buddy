@@ -13,13 +13,13 @@ import { getStudioDossier } from "@/lib/studio/studio.functions";
 export const Route = createFileRoute("/_authenticated/studio/$clientId/")({
   head: () => ({
     meta: [
-      { title: "Dossier client — Results Studio Sawaz" },
+      { title: "Dossier client — Sawaz Pilot" },
       {
         name: "description",
         content:
           "Dossier client Sawaz : collecte, réponses, fichiers reçus, métriques à vérifier, analyses internes et restitution.",
       },
-      { property: "og:title", content: "Dossier client — Results Studio Sawaz" },
+      { property: "og:title", content: "Dossier client — Sawaz Pilot" },
       {
         property: "og:description",
         content: "Collecte réelle, métriques vérifiées, analyses Sawaz et restitution client.",
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/studio/$clientId/")({
 });
 
 const projectStatusLabel: Record<string, string> = {
-  active: "Actif",
+  active: "En cours",
   closed: "Clôturé",
   archived: "Archivé",
 };
@@ -40,8 +40,8 @@ const projectStatusLabel: Record<string, string> = {
 const collectionStatusLabel: Record<string, string> = {
   draft: "Brouillon",
   open: "Ouverte",
-  partially_submitted: "Partiellement soumise",
-  submitted: "Soumise",
+  partially_submitted: "Partiellement reçue",
+  submitted: "Reçue",
   closed: "Clôturée",
 };
 
@@ -90,16 +90,19 @@ function StudioClient() {
         </Link>
       }
     >
+      <MissionNav />
+
+      <div id="vue-ensemble" className="scroll-mt-6">
       <Panel eyebrow="Vue d’ensemble" title="État du dossier">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {[
-            ["Projets", dossier.projects.length],
+            ["Missions", dossier.projects.length],
             ["Collectes", dossier.collections.length],
-            ["Soumissions", `${submittedCount}/${dossier.submissions.length}`],
-            ["Fichiers", fileCount],
-            ["Métriques", dossier.metrics.length],
+            ["Réponses reçues", `${submittedCount}/${dossier.submissions.length}`],
+            ["Documents", fileCount],
+            ["Indicateurs", dossier.metrics.length],
           ].map(([label, value]) => (
-            <div key={String(label)} className="rounded-xl border border-border bg-surface-raised p-4">
+            <div key={String(label)} className="rounded-md border border-border bg-surface-raised p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {label}
               </p>
@@ -109,7 +112,10 @@ function StudioClient() {
         </div>
       </Panel>
 
-      <Panel eyebrow="1. Périmètre" title="Projet et collecte">
+      </div>
+
+      <div id="collectes" className="scroll-mt-6">
+      <Panel eyebrow="1. Missions" title="Missions et collectes">
         <ul className="space-y-2 text-sm">
           {dossier.projects.map((p) => {
             const cols = dossier.collections.filter((c) => c.projectId === p.id);
@@ -138,18 +144,20 @@ function StudioClient() {
             );
           })}
           {dossier.projects.length === 0 ? (
-            <li className="text-muted-foreground">Aucun projet pour ce client.</li>
+            <li className="text-muted-foreground">Aucune mission pour ce client.</li>
           ) : null}
         </ul>
       </Panel>
 
-      <div className="pt-2">
-        <p className="text-eyebrow text-sawaz">2. Données reçues</p>
+      </div>
+
+      <div id="reponses" className="scroll-mt-6 pt-2">
+        <p className="text-eyebrow text-muted-foreground">2. Réponses · déclaré par les répondants</p>
         <h2 className="mt-1 font-display text-xl font-extrabold text-foreground">
-          Soumissions et pièces transmises
+          Réponses et documents transmis
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Chaque soumission conserve ses réponses, indisponibilités et fichiers d’origine.
+          Chaque réponse conserve ses réponses, indisponibilités et fichiers d’origine.
         </p>
       </div>
 
@@ -165,14 +173,19 @@ function StudioClient() {
         </Panel>
       ) : null}
 
+      <div id="indicateurs" className="scroll-mt-6">
       <MetricsReviewPanel metrics={dossier.metrics} canWrite={canWrite} />
+      </div>
 
+      <div id="analyse" className="scroll-mt-6">
       <AnalysesPanel
         clientId={dossier.client.id}
         analyses={dossier.analyses}
         canWrite={canWrite}
       />
+      </div>
 
+      <div id="restitution" className="scroll-mt-6">
       <ReviewsPanel
         clientSlug={clientId}
         clientId={dossier.client.id}
@@ -180,6 +193,36 @@ function StudioClient() {
         collections={dossier.collections}
         canWrite={canWrite}
       />
+      </div>
     </StudioShell>
+  );
+}
+
+const MISSION_SECTIONS = [
+  ["vue-ensemble", "Vue d’ensemble"],
+  ["collectes", "Collectes"],
+  ["reponses", "Réponses"],
+  ["indicateurs", "Indicateurs"],
+  ["analyse", "Analyse"],
+  ["restitution", "Restitution"],
+] as const;
+
+/** Sous-navigation de mission : ancres vers les sections existantes du dossier. */
+function MissionNav() {
+  return (
+    <nav
+      aria-label="Sections de la mission"
+      className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-1 py-2 backdrop-blur"
+    >
+      {MISSION_SECTIONS.map(([id, label]) => (
+        <a
+          key={id}
+          href={`#${id}`}
+          className="rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition hover:bg-surface hover:text-foreground"
+        >
+          {label}
+        </a>
+      ))}
+    </nav>
   );
 }

@@ -7,11 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Connexion équipe — Sawaz Results Studio" },
+      { title: "Connexion — Sawaz Pilot" },
       {
         name: "description",
         content:
-          "Accès réservé à l’équipe Sawaz : connexion sécurisée au Results Studio interne multi-client.",
+          "Accès réservé à l’équipe Sawaz : connexion sécurisée à Sawaz Pilot.",
       },
     ],
   }),
