@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { SawazMark } from "@/components/brand/Logos";
+import { SawazPilotMark } from "@/components/brand/PilotMark";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/set-password")({
@@ -98,7 +98,7 @@ function SetPasswordPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4 py-12">
+    <div className="pilot grid min-h-screen place-items-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
           <SawazMark />
@@ -112,7 +112,7 @@ function SetPasswordPage() {
           </span>
         </div>
 
-        <form onSubmit={submit} className="glass rounded-2xl space-y-4 p-6">
+        <form onSubmit={submit} className="surface-panel space-y-4 p-6">
           <h1 className="font-display text-xl font-extrabold text-foreground">
             Choisir votre mot de passe
           </h1>
