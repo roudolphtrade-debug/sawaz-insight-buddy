@@ -2,7 +2,6 @@
 -- Privileged implementations live in a non-exposed private schema.
 -- Public entry points remain for RLS/application compatibility and run as SECURITY INVOKER.
 
-begin;
 
 create schema if not exists private;
 
@@ -328,5 +327,3 @@ grant execute on function public.is_owner()
   to authenticated, service_role;
 grant execute on function public.is_team_member()
   to authenticated, service_role;
-
-commit;
