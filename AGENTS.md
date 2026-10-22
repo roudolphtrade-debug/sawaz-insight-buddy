@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Internal Sawaz Pilot screens scope their theme under the `.pilot` class (StudioShell, auth, set-password); never change `:root` tokens for Pilot, because the collection screens share them.
