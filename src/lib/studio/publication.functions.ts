@@ -75,40 +75,45 @@ export const getPublicationState = createServerFn({ method: "POST" })
     const g = await guard(supabase, userId, data.reviewId);
     if ("error" in g) return { ok: false, error: g.error };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const clientId = g.review.client_id as string;
 
-    const { data: versions } = await supabaseAdmin
+    const { data: versions, error: versionsError } = await supabase
       .from("review_versions")
       .select("id, version_no, status, published_at")
       .eq("review_id", data.reviewId)
       .order("version_no", { ascending: false });
+
+    if (versionsError) return { ok: false, error: "Lecture des versions refusée" };
 
     const versionNo = new Map((versions ?? []).map((v) => [v.id, v.version_no] as const));
     const ids = (versions ?? []).map((v) => v.id);
 
     const [linksRes, notifsRes, contactsRes] = await Promise.all([
       ids.length
-        ? supabaseAdmin
+        ? supabase
             .from("secure_links")
-            .select("*")
+            .select("id, target_id, created_at, expires_at, revoked_at, last_used_at, use_count, max_uses")
             .eq("scope", "review")
             .in("target_id", ids)
             .order("created_at", { ascending: false })
         : Promise.resolve({ data: [] as any[] }),
       ids.length
-        ? supabaseAdmin
+        ? supabase
             .from("notifications")
-            .select("*")
+            .select("id, recipient, status, sent_at, created_at, review_version_id")
             .in("review_version_id", ids)
             .order("created_at", { ascending: false })
         : Promise.resolve({ data: [] as any[] }),
-      supabaseAdmin
+      supabase
         .from("contacts")
         .select("name, email, is_primary")
         .eq("client_id", clientId)
         .is("archived_at", null),
     ]);
+
+    if (linksRes.error || notifsRes.error || contactsRes.error) {
+      return { ok: false, error: "Lecture du partage refusée (droits insuffisants)" };
+    }
 
     const now = Date.now();
     const published = (versions ?? []).find((v) => v.status === "published") ?? null;
@@ -166,8 +171,7 @@ export const regenerateReviewLink = createServerFn({ method: "POST" })
     if ("error" in g) return { ok: false, error: g.error };
     if (g.role !== "owner") return { ok: false, error: "Rotation réservée au rôle owner" };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: published } = await supabaseAdmin
+    const { data: published } = await supabase
       .from("review_versions")
       .select("id")
       .eq("review_id", data.reviewId)

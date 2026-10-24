@@ -7,7 +7,7 @@ import { useEffect, type ReactNode } from "react";
 import { LftcLogo } from "@/components/brand/Logos";
 import { Panel, StudioShell } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
-import { listStudioClients, studioBootstrap } from "@/lib/studio/studio.functions";
+import { listStudioClients } from "@/lib/studio/studio.functions";
 
 export const Route = createFileRoute("/_authenticated/studio/")({
   head: () => ({
@@ -31,12 +31,7 @@ export const Route = createFileRoute("/_authenticated/studio/")({
 });
 
 function StudioIndex() {
-  const bootstrap = useServerFn(studioBootstrap);
   const list = useServerFn(listStudioClients);
-
-  useEffect(() => {
-    void bootstrap({});
-  }, [bootstrap]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["studio-clients"],

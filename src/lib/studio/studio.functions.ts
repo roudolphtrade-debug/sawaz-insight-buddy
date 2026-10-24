@@ -113,33 +113,6 @@ async function resolveRole(
   return null;
 }
 
-/**
- * Rattache le compte authentifié à `public.users` et attribue le rôle owner
- * au tout premier utilisateur (amorçage de l'espace interne Sawaz).
- */
-export const studioBootstrap = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<Result<{ role: StudioRole; email: string }>> => {
-    const { userId, claims } = context;
-    const email = String((claims as { email?: string }).email ?? "");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    await supabaseAdmin
-      .from("users")
-      .upsert({ id: userId, email, is_active: true }, { onConflict: "id" });
-
-    const { count } = await supabaseAdmin
-      .from("user_roles")
-      .select("id", { count: "exact", head: true });
-
-    if ((count ?? 0) === 0) {
-      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "owner" });
-    }
-
-    const role = await resolveRole(supabaseAdmin as never, userId);
-    return { ok: true, data: { role, email } };
-  });
-
 export const listStudioClients = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(
