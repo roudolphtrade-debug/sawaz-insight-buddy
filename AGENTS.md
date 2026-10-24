@@ -10,3 +10,5 @@
 <!-- LOVABLE:END -->
 
 - Internal Sawaz Pilot screens scope their theme under the `.pilot` class (StudioShell, auth, set-password); never change `:root` tokens for Pilot, because the collection screens share them.
+- Pilot authenticated server calls use the external connection's VITE public configuration plus a remotely verified user bearer token, never bootstrap roles or fall back to service-role access; this preserves Core RLS and existing invitations.
+- Keep the shared privileged server client unchanged while Collect uses it; publication link/session/notification dependencies remain explicitly outside the service-role-free Clients/dossier read path.
