@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 
 import { DocumentGroups } from "@/components/studio/DocumentGroups";
+import { usePanelActive } from "@/components/studio/DossierTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   ATTRIBUTION_LABEL,
@@ -75,6 +76,12 @@ export function SubmissionDetail({
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  // Onglet quitté (clic, Retour / Suivant) : la lightbox se referme et libère le
+  // défilement de la page, le panneau restant monté mais masqué.
+  const panelActive = usePanelActive();
+  useEffect(() => {
+    if (!panelActive) setLightbox(null);
+  }, [panelActive]);
 
   const provided = submission.answers.filter((a) => !a.notFound);
   const missing = submission.answers.filter((a) => a.notFound);

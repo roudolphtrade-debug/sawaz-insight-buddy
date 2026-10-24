@@ -37,6 +37,13 @@ function render(hash: string) {
   );
 }
 
+/** Ouverture de chaque panneau : `[id, visible]`. */
+const panelStates = (html: string) =>
+  [...html.matchAll(/<div[^>]*role="tabpanel"[^>]*>/g)].map((m) => [
+    m[0].match(/data-dossier-panel="([a-z-]+)"/)?.[1],
+    !m[0].includes(" hidden"),
+  ]);
+
 const selectedTabs = (html: string) =>
   [...html.matchAll(/<a[^>]*role="tab"[^>]*>/g)]
     .filter((m) => m[0].includes('aria-selected="true"'))
@@ -73,12 +80,23 @@ describe("une seule section visible à la fois", () => {
       else expect(html).not.toContain(MARKER[tab.id]);
     }
     expect(selectedTabs(html)).toEqual([id]);
-    expect(html.match(/role="tabpanel"/g)).toHaveLength(1);
+    // Six panneaux référencés par aria-controls, un seul visible.
+    expect(panelStates(html)).toEqual(DOSSIER_TABS.map((t) => [t.id, t.id === id]));
     expect(html).toContain(`id="panneau-${id}"`);
     expect(html).toContain(`aria-labelledby="onglet-${id}"`);
   });
 
-  test("régression : #reponses n'active ni ne rend l'Analyse", () => {
+  test("les panneaux masqués sont hors focus clavier et hors arbre d'accessibilité", () => {
+    const html = render("#reponses");
+    for (const m of html.matchAll(/<div[^>]*role="tabpanel"[^>]*>/g)) {
+      const visible = m[0].includes('data-dossier-panel="reponses"');
+      expect(m[0].includes(" hidden")).toBe(!visible);
+      expect(m[0].includes(" inert")).toBe(!visible);
+      expect(m[0]).toContain(`tabindex="${visible ? 0 : -1}"`);
+    }
+  });
+
+  test("régression : #reponses n'active ni n'affiche l'Analyse", () => {
     const html = render("#reponses");
     expect(selectedTabs(html)).toEqual(["reponses"]);
     const analyseTab = html.match(/<a[^>]*href="#analyse"[^>]*>/)?.[0] ?? "";
@@ -86,7 +104,9 @@ describe("une seule section visible à la fois", () => {
     expect(analyseTab).toContain('tabindex="-1"');
     expect(html).not.toContain(MARKER.analyse);
     expect(html).not.toContain(MARKER.indicateurs);
-    expect(html).not.toContain('id="panneau-analyse"');
+    const analysePanel = html.match(/<div[^>]*data-dossier-panel="analyse"[^>]*>/)?.[0] ?? "";
+    expect(analysePanel).toContain(" hidden");
+    expect(analysePanel).toContain(" inert");
   });
 
   test("sémantique d'onglets complète", () => {

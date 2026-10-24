@@ -1,5 +1,13 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useRef, type KeyboardEvent, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import {
   DOSSIER_TABS,
@@ -38,10 +46,20 @@ export function useDossierTab() {
   return { active, select };
 }
 
+/** `true` dans le panneau visible, `false` dans un panneau masqué (encore monté). */
+const PanelActiveContext = createContext(true);
+
+/** Permet à un contenu (ex. une lightbox) de se refermer quand son onglet est quitté. */
+export function usePanelActive() {
+  return useContext(PanelActiveContext);
+}
+
 /**
- * Barre d'onglets (motif WAI-ARIA « tabs », activation automatique) et unique panneau
- * actif : les autres sections ne sont pas rendues. Présentationnel, testable sans
- * routeur : l'onglet actif et la sélection sont fournis par l'appelant.
+ * Barre d'onglets (motif WAI-ARIA « tabs », activation automatique) et un seul panneau
+ * visible à la fois. Chaque panneau est monté à sa première visite puis le reste,
+ * masqué (`hidden` + `inert` : invisible, hors arbre d'accessibilité et hors focus
+ * clavier) : une saisie non enregistrée survit donc à un changement d'onglet, sans
+ * aucun stockage ni appel serveur. Présentationnel, testable sans routeur.
  */
 export function DossierTabs({
   active,
@@ -53,6 +71,10 @@ export function DossierTabs({
   panels: Record<DossierTabId, () => ReactNode>;
 }) {
   const navRef = useRef<HTMLDivElement>(null);
+  // Panneaux déjà ouverts : conservés montés. Mise à jour pendant le rendu (état dérivé)
+  // pour que le panneau demandé s'affiche dès ce rendu, sans image intermédiaire vide.
+  const [visited, setVisited] = useState<ReadonlySet<DossierTabId>>(() => new Set([active]));
+  if (!visited.has(active)) setVisited(new Set([...visited, active]));
 
   const activate = (id: DossierTabId, focus: boolean) => {
     onSelect(id);
@@ -113,17 +135,26 @@ export function DossierTabs({
         })}
       </div>
 
-      <div
-        key={active}
-        id={panelElementId(active)}
-        role="tabpanel"
-        aria-labelledby={tabElementId(active)}
-        tabIndex={0}
-        data-dossier-panel={active}
-        className="mt-4 space-y-4 focus-visible:outline-none"
-      >
-        {panels[active]()}
-      </div>
+      {DOSSIER_TABS.map((tab) => {
+        const selected = tab.id === active;
+        return (
+          <div
+            key={tab.id}
+            id={panelElementId(tab.id)}
+            role="tabpanel"
+            aria-labelledby={tabElementId(tab.id)}
+            tabIndex={selected ? 0 : -1}
+            hidden={!selected}
+            inert={!selected}
+            data-dossier-panel={tab.id}
+            className="mt-4 space-y-4 focus-visible:outline-none"
+          >
+            <PanelActiveContext.Provider value={selected}>
+              {selected || visited.has(tab.id) ? panels[tab.id]() : null}
+            </PanelActiveContext.Provider>
+          </div>
+        );
+      })}
     </div>
   );
 }
