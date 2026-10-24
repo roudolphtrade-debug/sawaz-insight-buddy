@@ -96,14 +96,14 @@ export const getPublicationState = createServerFn({ method: "POST" })
             .eq("scope", "review")
             .in("target_id", ids)
             .order("created_at", { ascending: false })
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as any[], error: null }),
       ids.length
         ? supabase
             .from("notifications")
             .select("id, recipient, status, sent_at, created_at, review_version_id")
             .in("review_version_id", ids)
             .order("created_at", { ascending: false })
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as any[], error: null }),
       supabase
         .from("contacts")
         .select("name, email, is_primary")

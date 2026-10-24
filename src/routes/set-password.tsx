@@ -5,6 +5,16 @@ import { SawazPilotMark } from "@/components/brand/PilotMark";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/set-password")({
+  head: () => ({
+    meta: [
+      { title: "Activation de l’accès — Sawaz Pilot" },
+      { name: "description", content: "Activation d’un accès invité à l’équipe Sawaz Pilot." },
+      { property: "og:title", content: "Activation de l’accès — Sawaz Pilot" },
+      { property: "og:description", content: "Finalisez votre accès invité à Sawaz Pilot." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: SetPasswordPage,
 });
 

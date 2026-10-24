@@ -13,6 +13,10 @@ export const Route = createFileRoute("/auth")({
         content:
           "Accès réservé à l’équipe Sawaz : connexion sécurisée à Sawaz Pilot.",
       },
+      { property: "og:title", content: "Connexion — Sawaz Pilot" },
+      { property: "og:description", content: "Accès sécurisé à l’espace équipe Sawaz Pilot." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AuthPage,

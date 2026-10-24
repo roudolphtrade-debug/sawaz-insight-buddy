@@ -36,8 +36,8 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
     
     // The external integration supplies these public values to the generated
     // browser client too. Do not fall back to legacy Cloud/server credentials.
-    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'];
+    const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'];
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       const missing = [
