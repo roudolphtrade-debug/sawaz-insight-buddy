@@ -4,29 +4,7 @@ import { useState } from "react";
 import { Panel } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getStudioFileUrl, type StudioSubmission } from "@/lib/studio/studio.functions";
-
-const ANSWER_LABEL: Record<string, string> = {
-  "yt.mode": "Mode de transmission YouTube",
-  "yt.exportImpossible": "Export YouTube impossible",
-  "c.membresVideos": "Vidéos destinées aux membres",
-  "c.membresDetail": "Précision sur les vidéos membres",
-  "c.guideVipMissing": "Donnée Guide VIP indisponible",
-  "c.skipDixVideos": "Analyse des 10 vidéos reportée",
-  "c.traffic": "Sources de trafic disponibles",
-  "c.newReturning": "Nouveaux vs spectateurs récurrents",
-  "m.periode": "Période Meta",
-  "m.periodeAutre": "Autre période Meta",
-  "m.objectifs": "Objectifs de campagne Meta",
-  "m.objectifAutre": "Autre objectif Meta",
-  "m.destination": "Destination après le clic",
-  "m.destinationAutre": "Autre destination",
-  "m.mode": "Mode de transmission Meta",
-  "m.exportImpossible": "Export Meta impossible",
-  "m.results": "Résultats suivis dans Meta",
-  "m.resultsAutre": "Autre résultat Meta",
-  "m.resultsMissing": "Donnée Results indisponible",
-  "m.tracking": "Suivi Meta installé",
-};
+import { answerLabel, deterministicRespondent } from "@/lib/studio/submission-presentation";
 
 const VALUE_LABEL: Record<string, string> = {
   export: "Export",
@@ -104,10 +82,16 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
   const provided = submission.answers.filter((a) => !a.notFound);
   const missing = submission.answers.filter((a) => a.notFound);
 
+  // getStudioDossier currently supplies invitees via collection_id, not the submitter.
+  const identity = deterministicRespondent(submission, "collection-recipient");
+  const respondentLabel = identity
+    ? [identity.respondent, identity.respondentEmail].filter(Boolean).join(" · ")
+    : "Répondant non identifié";
+
   const submissionTitle = submission.submittedAt
     ? `Réponse reçue le ${formatDate(submission.submittedAt)}`
-    : submission.respondent
-      ? `En cours — ${submission.respondent}`
+    : identity?.respondent
+      ? `En cours — ${identity.respondent}`
       : "Collecte en cours";
 
   async function open(fileId: string, mode: "download" | "preview") {
@@ -135,7 +119,7 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
       }
     >
       <p className="text-xs text-muted-foreground">
-        {submission.respondentEmail ? `${submission.respondentEmail} · ` : ""}
+        {respondentLabel} · {" "}
         dernière activité {formatDate(submission.updatedAt)}
       </p>
 
@@ -149,7 +133,7 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
               provided.map((a) => (
                 <li key={a.key} className="border-b border-border py-2">
                   <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">{ANSWER_LABEL[a.key] ?? a.key}</span>
+                    <span className="text-muted-foreground">{answerLabel(a.key)}</span>
                     <span className="max-w-[55%] text-right font-medium text-foreground">
                       {humanValue(a.value)}
                     </span>
@@ -168,7 +152,7 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
             ) : (
               missing.map((a) => (
                 <li key={a.key} className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-muted-foreground">
-                  {ANSWER_LABEL[a.key] ?? a.key}
+                  {answerLabel(a.key)}
                 </li>
               ))
             )}
