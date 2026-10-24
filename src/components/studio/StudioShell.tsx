@@ -52,30 +52,35 @@ const navLink =
   "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-[var(--nav-muted)] transition hover:bg-white/5 hover:text-[var(--nav-foreground)]";
 const navActive = { className: "bg-white/10 text-[var(--nav-foreground)]" };
 
-/** Navigation principale Sawaz Pilot (Vue d'ensemble · Clients · Missions · Collectes). */
+const navSoon = cn(navLink, "cursor-not-allowed opacity-60 hover:bg-transparent");
+
+function SoonBadge() {
+  return (
+    <span className="rounded border border-white/15 px-1.5 text-[0.625rem] tracking-wide uppercase">
+      bientôt
+    </span>
+  );
+}
+
+/**
+ * Navigation principale Sawaz Pilot. « Clients » est l'unique entrée active (liste et
+ * dossiers) ; Missions et Collectes n'ont pas encore d'écran Pilot dédié : l'ancien lien
+ * « Collectes » ouvrait le formulaire des répondants, hors de l'espace interne.
+ */
 function PilotNav() {
   return (
     <nav aria-label="Navigation principale" className="flex gap-1 overflow-x-auto lg:flex-col">
-      <Link
-        to="/studio"
-        activeOptions={{ exact: true }}
-        activeProps={navActive}
-        className={navLink}
-      >
-        Vue d’ensemble
-      </Link>
       <Link to="/studio" activeProps={navActive} className={navLink}>
         Clients
       </Link>
-      <span aria-disabled="true" className={cn(navLink, "cursor-not-allowed opacity-60 hover:bg-transparent")}>
+      <span aria-disabled="true" className={navSoon}>
         Missions
-        <span className="rounded border border-white/15 px-1.5 text-[0.625rem] tracking-wide uppercase">
-          bientôt
-        </span>
+        <SoonBadge />
       </span>
-      <Link to="/collecte" className={navLink}>
+      <span aria-disabled="true" className={navSoon}>
         Collectes
-      </Link>
+        <SoonBadge />
+      </span>
     </nav>
   );
 }
@@ -98,7 +103,7 @@ export function StudioShell({
     <div className={cn("pilot min-h-screen lg:flex", className)}>
       <aside className="flex flex-col gap-4 bg-[var(--nav)] px-4 py-4 text-[var(--nav-foreground)] lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:gap-8 lg:py-6">
         <div className="flex items-center justify-between gap-3">
-          <Link to="/studio" aria-label="Sawaz Pilot — accueil" className="rounded-md">
+          <Link to="/studio" aria-label="Sawaz Pilot · accueil" className="rounded-md">
             <SawazPilotMark tone="dark" />
           </Link>
           <div className="lg:hidden">
@@ -111,9 +116,9 @@ export function StudioShell({
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-10 lg:py-6">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
             <div>
               <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
                 {title}
@@ -123,7 +128,7 @@ export function StudioShell({
             {actions}
           </div>
 
-          <div className="mt-6 space-y-5">{children}</div>
+          <div className="mt-4 space-y-4">{children}</div>
         </div>
       </main>
     </div>
@@ -144,9 +149,9 @@ export function Panel({
   aside?: ReactNode;
 }) {
   return (
-    <section className={cn("surface-panel p-5 sm:p-6", className)}>
+    <section className={cn("surface-panel p-4 sm:p-5", className)}>
       {title || eyebrow ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             {eyebrow ? <p className="text-eyebrow text-sawaz">{eyebrow}</p> : null}
             {title ? (

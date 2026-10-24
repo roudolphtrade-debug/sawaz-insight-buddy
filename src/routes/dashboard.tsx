@@ -5,12 +5,14 @@ import logoAsset from "@/assets/logo-sawaz.png.asset.json";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Sawaz Client Intelligence" },
+      { title: "Dashboard · Sawaz Client Intelligence" },
+      // Ancienne démonstration fictive : hors du parcours Sawaz Pilot, jamais indexée.
+      { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",
         content: "Live account intelligence: risk scores, relationship health, alerts, and AI briefs for every client in your book.",
       },
-      { property: "og:title", content: "Dashboard — Sawaz Client Intelligence" },
+      { property: "og:title", content: "Dashboard · Sawaz Client Intelligence" },
       {
         property: "og:description",
         content: "Live account intelligence: risk scores, relationship health, alerts, and AI briefs for every client in your book.",

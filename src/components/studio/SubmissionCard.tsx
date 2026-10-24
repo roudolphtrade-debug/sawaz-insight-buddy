@@ -1,10 +1,24 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 
-import { Panel } from "@/components/studio/StudioShell";
+import { DocumentGroups } from "@/components/studio/DocumentGroups";
 import { StatusBadge } from "@/components/StatusBadge";
-import { getStudioFileUrl, type StudioSubmission } from "@/lib/studio/studio.functions";
-import { answerLabel, deterministicRespondent } from "@/lib/studio/submission-presentation";
+import {
+  ATTRIBUTION_LABEL,
+  CLASSIFICATIONS,
+  CLASSIFICATION_LABEL,
+  formatParisDateTime,
+  qualificationLabel,
+  type AttributionSource,
+  type Classification,
+} from "@/lib/studio/qualification";
+import {
+  getStudioFileUrl,
+  qualifyStudioSubmission,
+  type StudioSubmission,
+} from "@/lib/studio/studio.functions";
+import { answerLabel } from "@/lib/studio/submission-presentation";
 
 const VALUE_LABEL: Record<string, string> = {
   export: "Export",
@@ -34,47 +48,28 @@ const VALUE_LABEL: Record<string, string> = {
   achat: "Achat / conversion",
 };
 
-const FILE_SLOT_LABEL: Record<string, string> = {
-  "yt.export": "YouTube — Export",
-  "yt.capture.overview": "YouTube — Vue d’ensemble",
-  "yt.capture.content": "YouTube — Contenu",
-  "yt.capture.audience": "YouTube — Audience",
-  "c.guideVip": "YouTube — Guide VIP",
-  "c.dixVideos": "YouTube — 10 vidéos récentes",
-  "c.traffic": "YouTube — Sources de trafic",
-  "c.newReturning": "YouTube — Nouveaux / récurrents",
-  "m.export": "Meta — Export",
-  "m.captures": "Meta — Captures",
-  "m.results": "Meta — Résultats",
-};
-
-function formatSize(bytes: number) {
-  if (!bytes) return "—";
-  const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} Mo` : `${Math.max(1, Math.round(bytes / 1024))} Ko`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("fr-FR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 function humanValue(value: unknown): string {
   if (Array.isArray(value)) {
     return value.map((item) => VALUE_LABEL[String(item)] ?? String(item)).join(", ");
   }
-
   if (typeof value === "boolean") return value ? "Oui" : "Non";
-  if (value === null || value === undefined || value === "") return "—";
-
+  if (value === null || value === undefined || value === "") return "Non renseigné";
   const text = String(value);
   return VALUE_LABEL[text] ?? text;
 }
 
-export function SubmissionCard({ submission }: { submission: StudioSubmission }) {
+/**
+ * Détail d'une réponse, ouvert à la demande : réponses brutes, documents regroupés
+ * et qualification Sawaz, présentée à part de la donnée brute. Lightbox et
+ * téléchargement passent par une URL signée temporaire (bucket privé).
+ */
+export function SubmissionDetail({
+  submission,
+  canWrite,
+}: {
+  submission: StudioSubmission;
+  canWrite: boolean;
+}) {
   const fileUrl = useServerFn(getStudioFileUrl);
   const [lightbox, setLightbox] = useState<{ fileId: string; url: string; name: string } | null>(
     null,
@@ -84,18 +79,6 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
   const provided = submission.answers.filter((a) => !a.notFound);
   const missing = submission.answers.filter((a) => a.notFound);
 
-  // getStudioDossier currently supplies invitees via collection_id, not the submitter.
-  const identity = deterministicRespondent(submission, "collection-recipient");
-  const respondentLabel = identity
-    ? [identity.respondent, identity.respondentEmail].filter(Boolean).join(" · ")
-    : "Répondant non identifié";
-
-  const submissionTitle = submission.submittedAt
-    ? `Réponse reçue le ${formatDate(submission.submittedAt)}`
-    : identity?.respondent
-      ? `En cours — ${identity.respondent}`
-      : "Collecte en cours";
-
   async function open(fileId: string, mode: "download" | "preview") {
     setError(null);
     const res = await fileUrl({ data: { fileId } });
@@ -103,12 +86,8 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
       setError(res.error);
       return;
     }
-
-    if (mode === "preview") {
-      setLightbox({ fileId, url: res.data.url, name: res.data.name });
-    } else {
-      triggerDownload(res.data.url, res.data.name);
-    }
+    if (mode === "preview") setLightbox({ fileId, url: res.data.url, name: res.data.name });
+    else triggerDownload(res.data.url, res.data.name);
   }
 
   useEffect(() => {
@@ -126,113 +105,60 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
   }, [lightbox]);
 
   return (
-    <Panel
-      eyebrow={submission.projectName}
-      title={submissionTitle}
-      aside={
-        <StatusBadge tone={submission.status === "submitted" ? "gold" : "sawaz"}>
-          {submission.status === "submitted" ? "Soumise" : "En cours"}
-        </StatusBadge>
-      }
-    >
-      <p className="text-xs text-muted-foreground">
-        {respondentLabel} · {" "}
-        dernière activité {formatDate(submission.updatedAt)}
-      </p>
+    <div className="space-y-5 border-t border-border pt-4">
+      <QualificationBlock submission={submission} canWrite={canWrite} />
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <div>
-          <h3 className="text-eyebrow text-sawaz">Réponses transmises</h3>
-          <ul className="mt-2 space-y-1.5 text-sm">
-            {provided.length === 0 ? (
-              <li className="text-muted-foreground">Aucune réponse enregistrée.</li>
-            ) : (
-              provided.map((a) => (
-                <li key={a.key} className="border-b border-border py-2">
-                  <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">{answerLabel(a.key)}</span>
-                    <span className="max-w-[55%] text-right font-medium text-foreground">
-                      {humanValue(a.value)}
-                    </span>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <section aria-label="Réponses transmises">
+          <h4 className="text-eyebrow text-sawaz">
+            Réponses transmises · {provided.length}
+          </h4>
+          {provided.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">Aucune réponse enregistrée.</p>
+          ) : (
+            <dl className="mt-2 divide-y divide-border text-sm">
+              {provided.map((a) => (
+                <div key={a.key} className="flex justify-between gap-4 py-1.5">
+                  <dt className="text-muted-foreground">{answerLabel(a.key)}</dt>
+                  <dd className="max-w-[55%] text-right font-medium text-foreground">
+                    {humanValue(a.value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
 
-        <div>
-          <h3 className="text-eyebrow text-sawaz">Données indisponibles</h3>
-          <ul className="mt-2 space-y-1.5 text-sm">
-            {missing.length === 0 ? (
-              <li className="text-muted-foreground">Aucune donnée déclarée indisponible.</li>
-            ) : (
-              missing.map((a) => (
-                <li key={a.key} className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-muted-foreground">
+        <section aria-label="Données indisponibles">
+          <h4 className="text-eyebrow text-sawaz">Données indisponibles · {missing.length}</h4>
+          {missing.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">Aucune donnée déclarée indisponible.</p>
+          ) : (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {missing.map((a) => (
+                <li
+                  key={a.key}
+                  className="rounded-md border border-border bg-surface-raised px-2 py-1 text-xs text-muted-foreground"
+                >
                   {answerLabel(a.key)}
                 </li>
-              ))
-            )}
-          </ul>
-        </div>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
 
-      <div className="mt-6 border-t border-border pt-5">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-eyebrow text-sawaz">Documents transmis</h3>
-          <span className="text-xs text-muted-foreground">
-            {submission.files.length} fichier{submission.files.length > 1 ? "s" : ""}
-          </span>
-        </div>
-
+      <section aria-label="Documents transmis">
+        <h4 className="text-eyebrow text-sawaz">Documents transmis · {submission.files.length}</h4>
         {error ? (
           <p role="alert" className="mt-2 text-sm text-destructive">
             {error}
           </p>
         ) : null}
-
-        <ul className="mt-3 space-y-2">
-          {submission.files.map((f) => (
-            <li key={f.id} className="rounded-lg border border-border bg-surface-raised p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-sawaz">
-                    {FILE_SLOT_LABEL[f.slot] ?? f.slot}
-                  </p>
-                  <p className="mt-1 truncate text-sm font-medium text-foreground">{f.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatSize(f.size)} · {f.mime || "type inconnu"} · {formatDate(f.uploadedAt)}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  {f.isImage ? (
-                    <button
-                      type="button"
-                      onClick={() => open(f.id, "preview")}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
-                    >
-                      Aperçu
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => open(f.id, "download")}
-                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
-                  >
-                    Télécharger
-                  </button>
-                </div>
-              </div>
-
-            </li>
-          ))}
-
-          {submission.files.length === 0 ? (
-            <li className="text-sm text-muted-foreground">Aucun document reçu.</li>
-          ) : null}
-        </ul>
-      </div>
+        <div className="mt-2">
+          <DocumentGroups files={submission.files} onOpen={(id, mode) => void open(id, mode)} />
+        </div>
+      </section>
 
       {lightbox ? (
         <div
@@ -250,7 +176,7 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
             <div className="flex shrink-0 gap-2">
               <button
                 type="button"
-                onClick={() => open(lightbox.fileId, "download")}
+                onClick={() => void open(lightbox.fileId, "download")}
                 className="rounded-lg border border-background/40 px-3 py-1.5 text-xs font-semibold text-background hover:bg-background/10"
               >
                 Télécharger
@@ -275,7 +201,198 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
           </div>
         </div>
       ) : null}
-    </Panel>
+    </div>
+  );
+}
+
+/** Qualification Sawaz : lecture pour tous, (re)qualification pour owner / analyst. */
+function QualificationBlock({
+  submission,
+  canWrite,
+}: {
+  submission: StudioSubmission;
+  canWrite: boolean;
+}) {
+  const q = submission.qualification;
+  const [editing, setEditing] = useState(false);
+
+  return (
+    <section
+      aria-label="Qualification Sawaz"
+      className="rounded-lg border border-dashed border-border bg-surface-raised/60 p-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-eyebrow text-muted-foreground">Qualification Sawaz · décision interne</p>
+          <p className="mt-1 text-sm text-foreground">
+            <span className="font-semibold">{qualificationLabel(q)}</span>
+            {q ? (
+              <>
+                {" · "}
+                {q.includedInAnalysis ? "incluse dans l’analyse" : "hors corpus actif"}
+                {q.respondentLabel ? ` · ${q.respondentLabel} (${ATTRIBUTION_LABEL[q.attributionSource]})` : ""}
+              </>
+            ) : (
+              " · cette réponse n’alimente pas le corpus actif"
+            )}
+          </p>
+          {q?.reason ? <p className="mt-0.5 text-xs text-muted-foreground">{q.reason}</p> : null}
+          {q ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Qualifiée le {formatParisDateTime(q.qualifiedAt)}
+              {q.qualifiedBy ? "" : " · initialisation Sawaz"}
+            </p>
+          ) : null}
+        </div>
+        {canWrite && !editing ? (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-sawaz transition hover:bg-sawaz/5"
+          >
+            {q ? "Requalifier" : "Qualifier"}
+          </button>
+        ) : null}
+      </div>
+      {canWrite && editing ? (
+        <QualificationForm submission={submission} onDone={() => setEditing(false)} />
+      ) : null}
+    </section>
+  );
+}
+
+function QualificationForm({
+  submission,
+  onDone,
+}: {
+  submission: StudioSubmission;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const qualify = useServerFn(qualifyStudioSubmission);
+  const q = submission.qualification;
+  const [classification, setClassification] = useState<Classification>(
+    q?.classification ?? "historical",
+  );
+  const [label, setLabel] = useState(q?.respondentLabel ?? "");
+  const [source, setSource] = useState<AttributionSource>(q?.attributionSource ?? "unknown");
+  const [reason, setReason] = useState(q?.reason ?? "");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      qualify({
+        data: {
+          submissionId: submission.id,
+          classification,
+          respondentLabel: label.trim() || null,
+          attributionSource: source,
+          reason: reason.trim() || null,
+        },
+      }),
+    onSuccess: (res) => {
+      if (!res.ok) return;
+      void qc.invalidateQueries({ queryKey: ["studio-dossier"] });
+      void qc.invalidateQueries({ queryKey: ["studio-clients"] });
+      onDone();
+    },
+  });
+
+  const labelWithoutSource = label.trim() !== "" && source === "unknown";
+  const result = mutation.data;
+
+  return (
+    <form
+      className="mt-3 grid gap-3 sm:grid-cols-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!labelWithoutSource) mutation.mutate();
+      }}
+    >
+      <label className="text-xs font-semibold text-muted-foreground">
+        Qualification
+        <select
+          value={classification}
+          onChange={(e) => setClassification(e.target.value as Classification)}
+          className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground"
+        >
+          {CLASSIFICATIONS.map((c) => (
+            <option key={c} value={c}>
+              {CLASSIFICATION_LABEL[c]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="text-xs font-semibold text-muted-foreground">
+        Source de l’attribution
+        <select
+          value={source}
+          onChange={(e) => setSource(e.target.value as AttributionSource)}
+          className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground"
+        >
+          <option value="manual_sawaz">{ATTRIBUTION_LABEL.manual_sawaz}</option>
+          <option value="technical">{ATTRIBUTION_LABEL.technical}</option>
+          <option value="unknown">{ATTRIBUTION_LABEL.unknown}</option>
+        </select>
+      </label>
+      <label className="text-xs font-semibold text-muted-foreground">
+        Répondant attribué (facultatif)
+        <input
+          value={label}
+          maxLength={120}
+          onChange={(e) => setLabel(e.target.value)}
+          className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground"
+        />
+      </label>
+      <label className="text-xs font-semibold text-muted-foreground">
+        Motif (facultatif)
+        <input
+          value={reason}
+          maxLength={500}
+          onChange={(e) => setReason(e.target.value)}
+          className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground"
+        />
+      </label>
+      <p className="text-xs text-muted-foreground sm:col-span-2">
+        Seule une référence alimente le corpus actif. Une attribution Sawaz n’est pas une identité
+        techniquement prouvée. Chaque qualification est tracée et ne supprime aucune donnée.
+      </p>
+      {labelWithoutSource ? (
+        <p role="alert" className="text-xs text-destructive sm:col-span-2">
+          Indique la source de l’attribution avant de nommer un répondant.
+        </p>
+      ) : null}
+      {result && !result.ok ? (
+        <p role="alert" className="text-xs text-destructive sm:col-span-2">
+          {result.error}
+        </p>
+      ) : null}
+      <div className="flex gap-2 sm:col-span-2">
+        <button
+          type="submit"
+          disabled={mutation.isPending || labelWithoutSource}
+          className="rounded-md bg-sawaz px-3 py-1.5 text-xs font-semibold text-sawaz-foreground transition hover:bg-sawaz/90 disabled:opacity-60"
+        >
+          {mutation.isPending ? "Enregistrement…" : "Enregistrer la qualification"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Badge de qualification, visuellement distinct du statut technique. */
+export function QualificationBadge({ submission }: { submission: StudioSubmission }) {
+  const q = submission.qualification;
+  return (
+    <StatusBadge tone={q?.classification === "reference" ? "gold" : "neutral"}>
+      {qualificationLabel(q)}
+    </StatusBadge>
   );
 }
 

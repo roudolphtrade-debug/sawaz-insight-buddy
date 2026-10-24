@@ -82,14 +82,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Sawaz Pilot turns account signals into a defensible read on client risk, relationship health, and the next move — before the risk hits.",
+          "Sawaz Pilot : espace interne Sawaz de pilotage des missions clients, des collectes, des analyses et des restitutions.",
       },
       { name: "author", content: "Sawaz" },
       { property: "og:title", content: "Sawaz Pilot" },
       {
         property: "og:description",
         content:
-          "Risk scoring, relationship health, and AI account briefs for the teams who carry the revenue.",
+          "Espace interne Sawaz de pilotage des missions clients.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

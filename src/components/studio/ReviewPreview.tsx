@@ -132,7 +132,7 @@ export function ReviewPreview({
 
         <Section eyebrow="Synthèse" title="Executive Summary">
           <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
-            {content.executiveSummary || "—"}
+            {content.executiveSummary || "Non renseigné"}
           </p>
         </Section>
 
@@ -227,7 +227,7 @@ export function ReviewPreview({
                     <p className="mt-2 text-xs text-muted-foreground">
                       Indicateurs sources :{" "}
                       {c.sourceMetricIds.map((id) => metricLabel.get(id) ?? id).join(", ")} ·
-                      période {c.periodStart ?? "—"} → {c.periodEnd ?? "—"} · généré le{" "}
+                      période {c.periodStart ?? "?"} → {c.periodEnd ?? "?"} · généré le{" "}
                       {new Date(c.generatedAt).toLocaleDateString("fr-FR")}
                     </p>
                   ) : null}

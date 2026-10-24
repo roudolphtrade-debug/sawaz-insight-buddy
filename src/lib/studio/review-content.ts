@@ -63,7 +63,7 @@ export const BLOCK_LABEL: Record<ReviewBlockKind, string> = {
 };
 
 export const BLOCK_HINT: Record<ReviewBlockKind, string> = {
-  fait: "Mesuré, non discutable — issu d'une métrique validée.",
+  fait: "Mesuré, non discutable : issu d'une métrique validée.",
   interpretation: "Lecture argumentée d'un fait, assumée par Sawaz.",
   hypothese: "Piste à confirmer, encore incertaine.",
   recommandation: "Action proposée, dérivée des faits et interprétations.",

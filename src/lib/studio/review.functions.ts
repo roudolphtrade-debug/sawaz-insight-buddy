@@ -40,6 +40,7 @@ export type ReviewSummary = {
   status: ReviewStatus;
   publishedAt: string | null;
   currentVersionId: string | null;
+  createdAt: string | null;
   versions: ReviewVersionSummary[];
 };
 
@@ -146,6 +147,7 @@ function toSummary(review: any, versions: any[], projectName: string): ReviewSum
     status: review.status,
     publishedAt: review.published_at,
     currentVersionId: review.current_version_id,
+    createdAt: review.created_at ?? null,
     versions: versions
       .map((v) => ({
         id: v.id,

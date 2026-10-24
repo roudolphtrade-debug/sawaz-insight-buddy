@@ -14,8 +14,14 @@ import {
 
 /** Pass 3F — État de publication, destinataires, lien sécurisé et historique. */
 
+const NOTIFICATION_STATUS_LABEL: Record<string, string> = {
+  queued: "En attente",
+  sent: "Envoyée",
+  failed: "Échec",
+};
+
 function date(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "Non renseigné";
   return new Date(value).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 }
 
@@ -42,7 +48,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
         return;
       }
       setFreshUrl(res.data.url);
-      toast.success("Nouveau lien généré — l'ancien est révoqué");
+      toast.success("Nouveau lien généré : l'ancien est révoqué");
       void qc.invalidateQueries({ queryKey: ["review-publication", reviewId] });
     },
   });
@@ -70,7 +76,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
       title="Accès client"
       aside={
         state.publishedVersionNo ? (
-          <StatusBadge tone="gold">Publiée — v{state.publishedVersionNo}</StatusBadge>
+          <StatusBadge tone="gold">Publiée · v{state.publishedVersionNo}</StatusBadge>
         ) : (
           <StatusBadge tone="neutral">Non partagée</StatusBadge>
         )
@@ -154,7 +160,8 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
           <ul className="mt-2 space-y-1.5">
             {state.notifications.map((n) => (
               <li key={n.id} className="text-sm text-muted-foreground">
-                {n.recipient} · v{n.versionNo ?? "—"} · {n.status} · {date(n.sentAt ?? n.createdAt)}
+                {n.recipient} · v{n.versionNo ?? "?"} · {NOTIFICATION_STATUS_LABEL[n.status] ?? "Statut inconnu"} ·{" "}
+                {date(n.sentAt ?? n.createdAt)}
               </li>
             ))}
             {state.notifications.length === 0 ? (
@@ -169,7 +176,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
         <ul className="mt-2 space-y-1.5">
           {state.links.map((l) => (
             <li key={l.id} className="text-sm text-muted-foreground">
-              v{l.versionNo ?? "—"} · créé le {date(l.createdAt)} ·{" "}
+              v{l.versionNo ?? "?"} · créé le {date(l.createdAt)} ·{" "}
               {l.revokedAt ? `révoqué le ${date(l.revokedAt)}` : l.active ? "actif" : "expiré"} ·
               dernière ouverture {date(l.lastUsedAt)}
             </li>

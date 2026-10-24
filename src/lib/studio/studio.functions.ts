@@ -1,6 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  ATTRIBUTION_SOURCES,
+  CLASSIFICATIONS,
+  parseQualificationRow,
+  type AttributionSource,
+  type Classification,
+  type StudioQualification,
+} from "@/lib/studio/qualification";
 
 /**
  * Results Studio — lecture et écriture des données réelles (Pass 3D).
@@ -26,6 +34,11 @@ export type StudioClient = {
   submissions: number;
   submitted: number;
   files: number;
+  /** Réponses du corpus actif (`included_in_analysis`), `null` si la qualification est
+   *  indisponible (table absente ou illisible). */
+  referenceResponses: number | null;
+  /** Documents des réponses du corpus actif, `null` si la qualification est indisponible. */
+  analyzableFiles: number | null;
   metricsToReview: number;
   reviewPublished: boolean;
 };
@@ -55,6 +68,8 @@ export type StudioSubmission = {
   respondentEmail: string | null;
   answers: StudioAnswer[];
   files: StudioFile[];
+  /** Décision Sawaz, distincte de la donnée brute ; `null` = à qualifier. */
+  qualification: StudioQualification | null;
 };
 
 export type StudioMetric = {
@@ -97,9 +112,39 @@ export type StudioDossier = {
   metrics: StudioMetric[];
   analyses: StudioAnalysis[];
   role: StudioRole;
+  /** `false` si les qualifications n'ont pas pu être lues (migration non appliquée). */
+  qualificationsAvailable: boolean;
 };
 
 const IMAGE_MIME = /^image\//;
+
+const QUALIFICATION_COLUMNS =
+  "id, submission_id, classification, included_in_analysis, respondent_label, attribution_source, reason, qualified_by, qualified_at";
+
+/**
+ * `submission_qualifications` n'apparaît pas encore dans les types générés (migration
+ * P3.5-A2) : accès non typé, toujours via le client authentifié (RLS), lignes
+ * revalidées par `parseQualificationRow`.
+ */
+function qualificationsTable(supabase: unknown) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as { from: (table: string) => any }).from("submission_qualifications");
+}
+
+async function readQualifications(supabase: unknown, clientIds: string[]) {
+  const { data, error } = await qualificationsTable(supabase)
+    .select(QUALIFICATION_COLUMNS)
+    .in("client_id", clientIds);
+  if (error) return { available: false as const, bySubmission: new Map<string, StudioQualification>() };
+  const bySubmission = new Map<string, StudioQualification>();
+  for (const raw of (data ?? []) as unknown[]) {
+    const parsed = parseQualificationRow(raw);
+    if (!parsed) continue;
+    const { submissionId, ...qualification } = parsed;
+    bySubmission.set(submissionId, qualification);
+  }
+  return { available: true as const, bySubmission };
+}
 
 async function resolveRole(
   supabase: { from: (t: string) => any },
@@ -131,17 +176,27 @@ export const listStudioClients = createServerFn({ method: "POST" })
       const ids = (clients ?? []).map((c) => c.id);
       if (ids.length === 0) return { ok: true, data: { role, clients: [] } };
 
-      const [projects, collections, submissions, files, metrics, reviews] = await Promise.all([
+      const [projects, collections, submissions, files, metrics, reviews, qualifications] = await Promise.all([
         supabase.from("projects").select("id, client_id").in("client_id", ids),
         supabase.from("collections").select("id, client_id").in("client_id", ids),
         supabase.from("submissions").select("id, client_id, status").in("client_id", ids),
-        supabase.from("files").select("id, client_id").in("client_id", ids),
+        supabase.from("files").select("id, client_id, submission_id").in("client_id", ids),
         supabase
           .from("extracted_metrics")
           .select("id, client_id, review_status")
           .in("client_id", ids),
         supabase.from("reviews").select("id, client_id, status").in("client_id", ids),
+        readQualifications(supabase, ids),
       ]);
+
+      const activeSubmissionIds = new Set(
+        [...qualifications.bySubmission]
+          .filter(([, q]) => q.includedInAnalysis)
+          .map(([submissionId]) => submissionId),
+      );
+      const clientOfSubmission = new Map(
+        (submissions.data ?? []).map((s) => [s.id, s.client_id] as const),
+      );
 
       const count = (rows: { client_id: string }[] | null, id: string) =>
         (rows ?? []).filter((r) => r.client_id === id).length;
@@ -163,6 +218,17 @@ export const listStudioClients = createServerFn({ method: "POST" })
               (s) => s.client_id === c.id && s.status === "submitted",
             ).length,
             files: count(files.data, c.id),
+            referenceResponses: qualifications.available
+              ? [...activeSubmissionIds].filter((id) => clientOfSubmission.get(id) === c.id).length
+              : null,
+            analyzableFiles: qualifications.available
+              ? (files.data ?? []).filter(
+                  (f) =>
+                    f.client_id === c.id &&
+                    f.submission_id !== null &&
+                    activeSubmissionIds.has(f.submission_id),
+                ).length
+              : null,
             metricsToReview: (metrics.data ?? []).filter(
               (m) => m.client_id === c.id && m.review_status === "a_verifier",
             ).length,
@@ -192,7 +258,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
 
     if (!client) return { ok: false, error: "Client introuvable ou accès refusé" };
 
-    const [projects, collections, submissions, answers, files, metrics, analyses, recipients] =
+    const [projects, collections, submissions, answers, files, metrics, analyses, recipients, qualifications] =
       await Promise.all([
         supabase
           .from("projects")
@@ -232,6 +298,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
           .from("collection_recipients")
           .select("collection_id, contacts(name, email)")
           .eq("client_id", client.id),
+        readQualifications(supabase, [client.id]),
       ]);
 
     const fileById = new Map(
@@ -254,6 +321,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
       data: {
         client,
         role,
+        qualificationsAvailable: qualifications.available,
         projects: (projects.data ?? []).map((p) => ({
           id: p.id,
           name: p.name,
@@ -297,6 +365,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
                 scanStatus: f.scan_status,
                 isImage: IMAGE_MIME.test(f.mime ?? ""),
               })),
+            qualification: qualifications.bySubmission.get(s.id) ?? null,
           };
         }),
         metrics: (metrics.data ?? []).map((m) => ({
@@ -333,7 +402,75 @@ export const getStudioDossier = createServerFn({ method: "POST" })
     };
   });
 
-/** URL de téléchargement signée (5 min) — le bucket reste privé. */
+export type QualifySubmissionInput = {
+  submissionId: string;
+  classification: Classification;
+  respondentLabel: string | null;
+  attributionSource: AttributionSource;
+  reason: string | null;
+};
+
+/**
+ * Qualifie ou requalifie une réponse (owner / analyst) via le client authentifié :
+ * la RLS (`can_write_client`) tranche, jamais de clé service_role. La base impose
+ * le locataire, l'auteur, l'horodatage et écrit le journal d'audit (triggers).
+ * Seule une référence alimente le corpus actif. Aucune suppression possible.
+ */
+export const qualifyStudioSubmission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: QualifySubmissionInput): QualifySubmissionInput => {
+    const classification = (CLASSIFICATIONS as readonly string[]).includes(input.classification)
+      ? input.classification
+      : "historical";
+    const attributionSource = (ATTRIBUTION_SOURCES as readonly string[]).includes(input.attributionSource)
+      ? input.attributionSource
+      : "unknown";
+    const label = typeof input.respondentLabel === "string" ? input.respondentLabel.trim() : "";
+    const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+    return {
+      submissionId: String(input.submissionId ?? ""),
+      classification,
+      respondentLabel: label ? label.slice(0, 120) : null,
+      attributionSource,
+      reason: reason ? reason.slice(0, 500) : null,
+    };
+  })
+  .handler(async ({ data, context }): Promise<Result<StudioQualification>> => {
+    if (data.respondentLabel && data.attributionSource === "unknown") {
+      return { ok: false, error: "Indique la source de l’attribution avant de nommer un répondant." };
+    }
+
+    const { data: submission } = await context.supabase
+      .from("submissions")
+      .select("id, collection_id, client_id")
+      .eq("id", data.submissionId)
+      .maybeSingle();
+    if (!submission) return { ok: false, error: "Réponse introuvable ou accès refusé" };
+
+    const { data: row, error } = await qualificationsTable(context.supabase)
+      .upsert(
+        {
+          submission_id: submission.id,
+          collection_id: submission.collection_id,
+          client_id: submission.client_id,
+          classification: data.classification,
+          included_in_analysis: data.classification === "reference",
+          respondent_label: data.respondentLabel,
+          attribution_source: data.attributionSource,
+          reason: data.reason,
+        },
+        { onConflict: "submission_id" },
+      )
+      .select(QUALIFICATION_COLUMNS)
+      .maybeSingle();
+
+    const parsed = error ? null : parseQualificationRow(row);
+    if (!parsed) return { ok: false, error: "Qualification refusée (droits insuffisants)" };
+    const { submissionId: _submissionId, ...qualification } = parsed;
+    return { ok: true, data: qualification };
+  });
+
+/** URL de téléchargement signée (5 min) : le bucket reste privé. */
 export const getStudioFileUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { fileId: string }) => ({ fileId: String(input.fileId ?? "") }))

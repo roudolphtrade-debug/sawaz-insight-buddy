@@ -4,12 +4,48 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/studio/EmptyState";
 import { Panel } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatParisDateTime, splitReviews } from "@/lib/studio/qualification";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/studio/review-content";
-import { createReview, listClientReviews } from "@/lib/studio/review.functions";
+import { createReview, listClientReviews, type ReviewSummary } from "@/lib/studio/review.functions";
+
+const COLLECTION_STATUS_LABEL: Record<string, string> = {
+  draft: "Brouillon",
+  open: "Ouverte",
+  partially_submitted: "Partiellement reçue",
+  submitted: "Reçue",
+  closed: "Clôturée",
+};
+
+function ReviewRow({ review, clientSlug }: { review: ReviewSummary; clientSlug: string }) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2.5">
+      <span className="text-sm text-foreground">
+        {review.projectName}
+        <span className="ml-2 text-xs text-muted-foreground">
+          {review.versions.length} version{review.versions.length > 1 ? "s" : ""}
+          {review.createdAt ? ` · créée le ${formatParisDateTime(review.createdAt)}` : ""}
+        </span>
+      </span>
+      <span className="flex flex-wrap items-center gap-2">
+        <StatusBadge tone={review.status === "published" ? "gold" : "sawaz"}>
+          {REVIEW_STATUS_LABEL[review.status as ReviewStatus]}
+        </StatusBadge>
+        <Link
+          to="/studio/$clientId/review/$reviewId"
+          params={{ clientId: clientSlug, reviewId: review.id }}
+          className="text-sm text-sawaz hover:underline"
+        >
+          Ouvrir
+        </Link>
+      </span>
+    </li>
+  );
+}
 
 export function ReviewsPanel({
   clientSlug,
@@ -69,10 +105,13 @@ export function ReviewsPanel({
   });
 
   const reviews = data?.ok ? data.data : [];
+  // Restitutions en double (même mission, même collecte) : la plus récente reste dans
+  // le parcours principal, les autres sont repliées comme historique, jamais supprimées.
+  const { primary, older } = splitReviews(reviews);
 
   return (
     <Panel
-      eyebrow="5. Restitution client"
+      eyebrow="Restitution client"
       title="Restitution stratégique"
       aside={<StatusBadge tone="neutral">Aucun accès client avant partage</StatusBadge>}
     >
@@ -108,7 +147,8 @@ export function ReviewsPanel({
               >
                 {collections.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {projects.find((p) => p.id === c.projectId)?.name ?? "Projet"} — {c.status}
+                    {projects.find((p) => p.id === c.projectId)?.name ?? "Projet"} · collecte{" "}
+                    {(COLLECTION_STATUS_LABEL[c.status] ?? "en cours").toLowerCase()}
                   </option>
                 ))}
               </select>
@@ -126,39 +166,43 @@ export function ReviewsPanel({
 
       <div className="mt-5">
         <p className="text-eyebrow text-muted-foreground">Restitutions existantes</p>
-        <ul className="mt-2 space-y-2">
-          {reviews.map((r) => (
-            <li
-              key={r.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-raised p-3"
-            >
-              <span className="text-sm text-foreground">
-                {r.projectName}
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {r.versions.length} version{r.versions.length > 1 ? "s" : ""}
-                </span>
-              </span>
-              <span className="flex flex-wrap items-center gap-2">
-                <StatusBadge tone={r.status === "published" ? "gold" : "sawaz"}>
-                  {REVIEW_STATUS_LABEL[r.status as ReviewStatus]}
-                </StatusBadge>
-                <Link
-                  to="/studio/$clientId/review/$reviewId"
-                  params={{ clientId: clientSlug, reviewId: r.id }}
-                  className="text-sm text-sawaz hover:underline"
-                >
-                  Ouvrir
-                </Link>
-              </span>
-            </li>
-          ))}
+        {reviews.length === 0 ? (
+          <div className="mt-2">
+            <EmptyState
+              title="Aucune restitution préparée"
+              missing="un brouillon de restitution pour la collecte de ce client."
+              why="la restitution s’appuie sur les indicateurs validés et les analyses destinées au client ; rien n’est partagé avant publication."
+              next={
+                canWrite
+                  ? "créer un brouillon avec le formulaire ci-dessus, de préférence après validation des premiers indicateurs."
+                  : "un propriétaire ou un analyste Sawaz doit créer le premier brouillon."
+              }
+            />
+          </div>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {primary.map((r) => (
+              <ReviewRow key={r.id} review={r} clientSlug={clientSlug} />
+            ))}
+          </ul>
+        )}
 
-          {reviews.length === 0 ? (
-            <li className="text-sm text-muted-foreground">
-              Aucune restitution créée pour ce client.
-            </li>
-          ) : null}
-        </ul>
+        {older.length > 0 ? (
+          <details data-older-reviews className="group mt-3 rounded-lg border border-border">
+            <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-muted-foreground [&::-webkit-details-marker]:hidden">
+              Autres restitutions ({older.length}) · historique
+            </summary>
+            <p className="px-3 text-xs text-muted-foreground">
+              Restitution(s) plus ancienne(s) pour la même mission et la même collecte, conservée(s)
+              telle(s) quelle(s).
+            </p>
+            <ul className="space-y-2 p-3">
+              {older.map((r) => (
+                <ReviewRow key={r.id} review={r} clientSlug={clientSlug} />
+              ))}
+            </ul>
+          </details>
+        ) : null}
       </div>
     </Panel>
   );

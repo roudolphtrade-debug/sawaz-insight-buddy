@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 
+import { EmptyState } from "@/components/studio/EmptyState";
 import { Panel } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { reviewStudioMetric, type StudioMetric } from "@/lib/studio/studio.functions";
@@ -11,6 +12,13 @@ const STATUS_LABEL = {
   valide: "Validé",
   rejete: "Rejeté",
 } as const;
+
+const PROVENANCE_LABEL: Record<string, string> = {
+  manual: "saisie manuelle",
+  csv: "import CSV",
+  capture_ocr: "lecture de capture",
+  derived: "calcul dérivé",
+};
 
 const STATUS_TONE = {
   a_verifier: "sawaz",
@@ -22,9 +30,12 @@ const STATUS_TONE = {
 export function MetricsReviewPanel({
   metrics,
   canWrite,
+  analyzableDocuments,
 }: {
   metrics: StudioMetric[];
   canWrite: boolean;
+  /** Documents du corpus actif, pour expliquer l'état vide. */
+  analyzableDocuments: number;
 }) {
   const queryClient = useQueryClient();
   const review = useServerFn(reviewStudioMetric);
@@ -43,7 +54,7 @@ export function MetricsReviewPanel({
 
   return (
     <Panel
-      eyebrow="3. Indicateurs · ce que les données montrent"
+      eyebrow="Indicateurs · ce que les données montrent"
       title="Vérification des indicateurs"
       aside={
         <StatusBadge tone="neutral">
@@ -52,10 +63,20 @@ export function MetricsReviewPanel({
       }
     >
       {metrics.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Aucune métrique extraite pour l'instant. Elles apparaîtront ici dès leur extraction depuis
-          les fichiers reçus.
-        </p>
+        <EmptyState
+          title="Aucun indicateur pour l’instant"
+          missing="les indicateurs chiffrés (audience, dépenses, résultats) issus des documents transmis."
+          why={
+            analyzableDocuments > 0
+              ? `aucune extraction n’a encore été réalisée sur les ${analyzableDocuments} documents analysables du corpus actif.`
+              : "aucune réponse de référence ne fournit encore de documents analysables."
+          }
+          next={
+            analyzableDocuments > 0
+              ? "extraire les indicateurs des documents de la réponse de référence, puis les vérifier ici avant toute restitution."
+              : "qualifier une réponse de référence dans la section Réponses."
+          }
+        />
       ) : (
         <ul className="space-y-3">
           {metrics.map((m) => (
@@ -69,8 +90,9 @@ export function MetricsReviewPanel({
                     ) : null}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {m.valueNum ?? m.valueText ?? "—"} {m.unit ?? ""} ·{" "}
-                    {m.periodStart ?? "?"} → {m.periodEnd ?? "?"} · provenance {m.provenance}
+                    {m.valueNum ?? m.valueText ?? "Valeur absente"} {m.unit ?? ""} ·{" "}
+                    {m.periodStart ?? "?"} → {m.periodEnd ?? "?"} · provenance{" "}
+                    {PROVENANCE_LABEL[m.provenance] ?? "inconnue"}
                     {m.confidence !== null
                       ? ` · confiance ${Math.round(m.confidence * 100)}%`
                       : ""}

@@ -25,25 +25,33 @@ import {
   type ReviewCtaType,
   type ReviewStatus,
 } from "@/lib/studio/review-content";
+import { roleLabel } from "@/lib/studio/qualification";
 import {
   getReviewWorkspace,
   saveReviewVersion,
   transitionReviewVersion,
 } from "@/lib/studio/review.functions";
 
+const ANALYSIS_TYPE_LABEL: Record<string, string> = {
+  constat: "Constat",
+  hypothese: "Hypothèse",
+  recommandation: "Recommandation",
+  note: "Note interne",
+};
+
 export const Route = createFileRoute("/_authenticated/studio/$clientId/review/$reviewId")({
   head: () => ({
     meta: [
-      { title: "Strategic Review Builder — Sawaz" },
+      { title: "Construction de la restitution · Sawaz Pilot" },
       {
         name: "description",
         content:
-          "Construction d'une Sawaz Strategic Review : faits, interprétations, hypothèses, recommandations et graphiques issus des métriques validées.",
+          "Construction d'une restitution stratégique Sawaz : faits, interprétations, hypothèses, recommandations et graphiques issus des métriques validées.",
       },
-      { property: "og:title", content: "Strategic Review Builder — Sawaz" },
+      { property: "og:title", content: "Construction de la restitution · Sawaz Pilot" },
       {
         property: "og:description",
-        content: "Workflow éditorial Draft → In Review → Approved → Published.",
+        content: "Circuit éditorial : brouillon, relecture, approbation, publication.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -91,7 +99,7 @@ function ReviewBuilder() {
         return;
       }
       if (res.data.forked) {
-        toast.success("Version publiée immuable — nouvelle version créée");
+        toast.success("Version publiée immuable : nouvelle version créée");
         setVersionId(res.data.versionId);
       } else {
         toast.success("Version enregistrée");
@@ -115,8 +123,8 @@ function ReviewBuilder() {
       if (res.data.access) {
         toast.success(
           res.data.access.notified.length > 0
-            ? `Accès client ouvert — notifié : ${res.data.access.notified.join(", ")}`
-            : "Accès client ouvert — aucun contact notifié",
+            ? `Accès client ouvert · notifié : ${res.data.access.notified.join(", ")}`
+            : "Accès client ouvert · aucun contact notifié",
         );
       }
       void qc.invalidateQueries({ queryKey: ["review-workspace"] });
@@ -126,7 +134,7 @@ function ReviewBuilder() {
 
   if (isLoading || (!ws && !data)) {
     return (
-      <StudioShell title="Strategic Review">
+      <StudioShell title="Restitution stratégique">
         <Panel>ChargementÔÇª</Panel>
       </StudioShell>
     );
@@ -134,10 +142,10 @@ function ReviewBuilder() {
 
   if (!ws || !content) {
     return (
-      <StudioShell title="Strategic Review">
+      <StudioShell title="Restitution stratégique">
         <Panel>
           <p className="text-sm text-destructive">
-            {data && !data.ok ? data.error : "Review indisponible"}
+            {data && !data.ok ? data.error : "Restitution indisponible"}
           </p>
           <Link
             to="/studio/$clientId"
@@ -214,8 +222,8 @@ function ReviewBuilder() {
 
   return (
     <StudioShell
-      title={`Strategic Review — ${ws.theme.name}`}
-      subtitle={`${ws.review.projectName} · version ${ws.version.versionNo} · rôle : ${ws.role ?? "aucun"}`}
+      title={`Restitution stratégique · ${ws.theme.name}`}
+      subtitle={`${ws.review.projectName} · version ${ws.version.versionNo} · rôle : ${roleLabel(ws.role).toLowerCase()}`}
       actions={
         <Link
           to="/studio/$clientId"
@@ -272,7 +280,7 @@ function ReviewBuilder() {
           ) : null}
           {locked ? (
             <StatusBadge tone="sawaz">
-              Version {ws.version.status === "published" ? "publiée" : "archivée"} — immuable
+              Version {ws.version.status === "published" ? "publiée" : "archivée"} : immuable
             </StatusBadge>
           ) : null}
         </div>
@@ -348,7 +356,7 @@ function ReviewBuilder() {
                   disabled={!canWrite}
                   onClick={() => importAnalysis(a.id)}
                 >
-                  {a.type} — {a.title ?? "sans titre"}
+                  {ANALYSIS_TYPE_LABEL[a.type] ?? "Analyse"} · {a.title ?? "sans titre"}
                 </Button>
               ))}
             </div>
@@ -658,7 +666,7 @@ function ReviewBuilder() {
         </div>
       </Panel>
 
-      <Panel eyebrow="Preview client" title="Rendu exact de la Strategic Review">
+      <Panel eyebrow="Aperçu client" title="Rendu exact de la restitution">
         <ReviewPreview
           content={content}
           charts={charts}

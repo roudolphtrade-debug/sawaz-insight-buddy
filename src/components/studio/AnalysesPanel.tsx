@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 
+import { EmptyState } from "@/components/studio/EmptyState";
 import { Panel } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -79,17 +80,24 @@ export function AnalysesPanel({
   const internal = analyses.filter((a) => a.type === "note");
 
   return (
-    <div className="space-y-6">
-      <Panel eyebrow="4. Analyse Sawaz · interprétation" title="Constats, hypothèses et recommandations" className="border-l-4 border-l-sawaz">
+    <div className="space-y-4">
+      <Panel eyebrow="Analyse Sawaz · interprétation" title="Constats, hypothèses et recommandations" className="border-l-4 border-l-sawaz">
         <p className="mb-4 text-sm text-muted-foreground">
           Cette zone transforme les données collectées en enseignements exploitables. Seuls les
           éléments destinés au client pourront alimenter la restitution.
         </p>
 
         {shared.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aucune analyse enregistrée pour ce client.
-          </p>
+          <EmptyState
+            title="Aucune analyse rédigée"
+            missing="les constats, hypothèses et recommandations tirés du corpus actif."
+            why="l’interprétation Sawaz n’a pas encore été formalisée pour ce client."
+            next={
+              canWrite
+                ? "ajouter un premier constat avec le formulaire « Ajouter un élément d’analyse » ci-dessous, en s’appuyant sur les indicateurs vérifiés."
+                : "un propriétaire ou un analyste Sawaz doit rédiger un premier constat."
+            }
+          />
         ) : (
           <ul className="space-y-3">
             {shared.map((a) => (

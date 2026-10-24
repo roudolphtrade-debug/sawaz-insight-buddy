@@ -12,13 +12,13 @@ import { listStudioClients } from "@/lib/studio/studio.functions";
 export const Route = createFileRoute("/_authenticated/studio/")({
   head: () => ({
     meta: [
-      { title: "Clients — Sawaz Pilot" },
+      { title: "Clients · Sawaz Pilot" },
       {
         name: "description",
         content:
           "Espace interne Sawaz : pilotage des missions clients, collectes, réponses, indicateurs et analyses Sawaz.",
       },
-      { property: "og:title", content: "Clients — Sawaz Pilot" },
+      { property: "og:title", content: "Clients · Sawaz Pilot" },
       {
         property: "og:description",
         content: "Pilotage des missions clients Sawaz.",
@@ -64,8 +64,8 @@ function StudioIndex() {
       {data?.ok && clients.length === 0 ? (
         <Panel title="Aucun client accessible">
           <p className="text-sm text-muted-foreground">
-            Ton compte n'a pas encore de client rattaché, ou aucun client n'existe. Un owner Sawaz
-            doit t'attribuer un rôle et un périmètre.
+            Ton compte n'a pas encore de client rattaché, ou aucun client n'existe. Un propriétaire
+            Sawaz doit t'attribuer un rôle et un périmètre.
           </p>
         </Panel>
       ) : null}
@@ -77,10 +77,10 @@ function StudioIndex() {
               <thead>
                 <tr className="border-b border-border bg-surface-raised">
                   <HeaderCell className="min-w-72">Client</HeaderCell>
-                  <HeaderCell icon={<FolderKanban />}>Missions</HeaderCell>
-                  <HeaderCell icon={<Layers3 />}>Collectes</HeaderCell>
-                  <HeaderCell icon={<Inbox />}>Réponses</HeaderCell>
-                  <HeaderCell icon={<FileStack />}>Documents</HeaderCell>
+                  <HeaderCell numeric icon={<FolderKanban />}>Missions</HeaderCell>
+                  <HeaderCell numeric icon={<Layers3 />}>Collectes</HeaderCell>
+                  <HeaderCell numeric icon={<Inbox />}>Réponses de référence</HeaderCell>
+                  <HeaderCell numeric icon={<FileStack />}>Documents analysables</HeaderCell>
                   <HeaderCell>Restitution</HeaderCell>
                   <HeaderCell className="text-right">Action</HeaderCell>
                 </tr>
@@ -91,7 +91,7 @@ function StudioIndex() {
                     key={client.id}
                     className="group border-b border-border transition last:border-b-0 hover:bg-sawaz/[0.055]"
                   >
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3">
                       <div className="flex items-center gap-4">
                         <ClientLogo name={client.name} slug={client.slug} />
                         <div className="min-w-0">
@@ -106,17 +106,15 @@ function StudioIndex() {
                     </td>
                     <MetricCell value={client.projects} />
                     <MetricCell value={client.collections} />
-                    <td className="px-4 py-3.5">
-                      <p className="font-display text-base font-extrabold text-foreground">
-                        {client.submitted}
-                        <span className="ml-1 font-sans text-xs font-medium text-muted-foreground">
-                          / {client.submissions}
-                        </span>
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">reçues</p>
-                    </td>
-                    <MetricCell value={client.files} />
-                    <td className="px-4 py-3.5">
+                    <MetricCell
+                      value={client.referenceResponses ?? "À qualifier"}
+                      sub={`${client.submissions} réponse${client.submissions > 1 ? "s" : ""} au total`}
+                    />
+                    <MetricCell
+                      value={client.analyzableFiles ?? "À qualifier"}
+                      sub={`${client.files} document${client.files > 1 ? "s" : ""} au total`}
+                    />
+                    <td className="px-4 py-3">
                       <StatusBadge tone={client.reviewPublished ? "gold" : "sawaz"}>
                         {client.reviewPublished ? "Restitution partagée" : "Restitution non partagée"}
                       </StatusBadge>
@@ -126,7 +124,7 @@ function StudioIndex() {
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3 text-right">
                       <Link
                         to="/studio/$clientId"
                         params={{ clientId: client.slug }}
@@ -155,17 +153,20 @@ function HeaderCell({
   children,
   icon,
   className,
+  numeric = false,
 }: {
   children: ReactNode;
   icon?: ReactNode;
   className?: string;
+  /** Colonne numérique : titre centré, comme la valeur et son sous-libellé. */
+  numeric?: boolean;
 }) {
   return (
     <th
       scope="col"
-      className={`px-4 py-4 text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase ${className ?? ""}`}
+      className={`px-4 py-3 text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase ${numeric ? "text-center" : ""} ${className ?? ""}`}
     >
-      <span className="inline-flex items-center gap-2 [&_svg]:size-3.5 [&_svg]:text-sawaz">
+      <span className="inline-flex items-center justify-center gap-2 [&_svg]:size-3.5 [&_svg]:text-sawaz">
         {icon}
         {children}
       </span>
@@ -173,10 +174,16 @@ function HeaderCell({
   );
 }
 
-function MetricCell({ value }: { value: number }) {
+/** Cellule numérique centrée : valeur et sous-libellé éventuel. */
+function MetricCell({ value, sub }: { value: number | string; sub?: string }) {
   return (
-    <td className="px-4 py-3.5">
-      <span className="font-display text-lg font-extrabold text-foreground">{value}</span>
+    <td className="px-4 py-3 text-center">
+      <span
+        className={`font-display font-extrabold text-foreground ${typeof value === "number" ? "text-lg" : "text-sm"}`}
+      >
+        {value}
+      </span>
+      {sub ? <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p> : null}
     </td>
   );
 }

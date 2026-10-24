@@ -7,13 +7,13 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Connexion — Sawaz Pilot" },
+      { title: "Connexion · Sawaz Pilot" },
       {
         name: "description",
         content:
           "Accès réservé à l’équipe Sawaz : connexion sécurisée à Sawaz Pilot.",
       },
-      { property: "og:title", content: "Connexion — Sawaz Pilot" },
+      { property: "og:title", content: "Connexion · Sawaz Pilot" },
       { property: "og:description", content: "Accès sécurisé à l’espace équipe Sawaz Pilot." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

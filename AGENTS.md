@@ -13,3 +13,4 @@
 - Pilot authenticated server calls use the external connection's VITE public configuration plus a remotely verified user bearer token, never bootstrap roles or fall back to service-role access; this preserves Core RLS and existing invitations.
 - Keep the shared privileged server client unchanged while Collect uses it; publication link/session/notification dependencies remain explicitly outside the service-role-free Clients/dossier read path.
 - Submission presentation belongs in a browser-safe helper; collection-recipient identity is not deterministic submission identity, so the UI must reject it without changing Core reads or records.
+- Submission qualification lives in `submission_qualifications` (Sawaz Core), never in submissions/answers/files; Pilot KPIs count only `included_in_analysis = true`, and an attributed respondent (`manual_sawaz`) is never presented as a technically proven identity.
