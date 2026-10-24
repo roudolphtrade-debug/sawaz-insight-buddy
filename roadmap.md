@@ -12,8 +12,8 @@
 
 # P3.4-E
 
-- [ ] Point homepage Sign in and Launch app to /auth; preserve demo.
-- [ ] Present missing YouTube keys and unknown keys without technical identifiers.
-- [ ] Show explicit unidentified respondent when deterministic identity is absent.
-- [ ] Verify navigation, identity rules, and preview diagnostics.
+- [x] Point homepage Sign in and Launch app to /auth; preserve demo (browser verified).
+- [x] Present missing YouTube keys and unknown keys without technical identifiers (helper output verified).
+- [x] Show explicit unidentified respondent when deterministic identity is absent (collection-recipient provenance rejected; four tests pass).
+- [x] Verify navigation, identity rules, and preview diagnostics (11 focused tests pass; build OK; no browser runtime errors). Authenticated dossier presentation remains unverified because external session is unavailable.
 - [ ] Test real LFTC document buttons: uploaded instructions stop after “bouton”; external authenticated session unavailable.
