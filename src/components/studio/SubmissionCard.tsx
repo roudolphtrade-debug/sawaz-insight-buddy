@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Panel } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -76,7 +76,9 @@ function humanValue(value: unknown): string {
 
 export function SubmissionCard({ submission }: { submission: StudioSubmission }) {
   const fileUrl = useServerFn(getStudioFileUrl);
-  const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [lightbox, setLightbox] = useState<{ fileId: string; url: string; name: string } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const provided = submission.answers.filter((a) => !a.notFound);
@@ -95,6 +97,7 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
       : "Collecte en cours";
 
   async function open(fileId: string, mode: "download" | "preview") {
+    setError(null);
     const res = await fileUrl({ data: { fileId } });
     if (!res.ok) {
       setError(res.error);
@@ -102,11 +105,25 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
     }
 
     if (mode === "preview") {
-      setPreviews((p) => ({ ...p, [fileId]: res.data.url }));
+      setLightbox({ fileId, url: res.data.url, name: res.data.name });
     } else {
-      window.open(res.data.url, "_blank", "noopener");
+      triggerDownload(res.data.url, res.data.name);
     }
   }
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [lightbox]);
 
   return (
     <Panel
@@ -208,13 +225,6 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
                 </div>
               </div>
 
-              {previews[f.id] ? (
-                <img
-                  src={previews[f.id]}
-                  alt={`Aperçu de ${f.name}`}
-                  className="mt-3 max-h-80 w-full rounded-lg border border-border object-contain"
-                />
-              ) : null}
             </li>
           ))}
 
@@ -223,6 +233,65 @@ export function SubmissionCard({ submission }: { submission: StudioSubmission })
           ) : null}
         </ul>
       </div>
+
+      {lightbox ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Aperçu de ${lightbox.name}`}
+          className="fixed inset-0 z-50 flex flex-col bg-foreground/85 p-3 sm:p-6"
+          onClick={() => setLightbox(null)}
+        >
+          <div
+            className="mx-auto flex w-full max-w-[95vw] items-center justify-between gap-3 pb-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="min-w-0 truncate text-sm font-medium text-background">{lightbox.name}</p>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => open(lightbox.fileId, "download")}
+                className="rounded-lg border border-background/40 px-3 py-1.5 text-xs font-semibold text-background hover:bg-background/10"
+              >
+                Télécharger
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setLightbox(null)}
+                className="rounded-lg border border-background/40 px-3 py-1.5 text-xs font-semibold text-background hover:bg-background/10"
+              >
+                Fermer ✕
+              </button>
+            </div>
+          </div>
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            <img
+              src={lightbox.url}
+              alt={`Aperçu de ${lightbox.name}`}
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[85vh] max-w-[95vw] object-contain"
+            />
+          </div>
+        </div>
+      ) : null}
     </Panel>
   );
+}
+
+/** Ajoute `download=<nom>` à l'URL signée sans toucher au token, puis déclenche le téléchargement. */
+export function buildDownloadUrl(signedUrl: string, name: string) {
+  const u = new URL(signedUrl);
+  u.searchParams.set("download", name);
+  return u.toString();
+}
+
+function triggerDownload(signedUrl: string, name: string) {
+  const a = document.createElement("a");
+  a.href = buildDownloadUrl(signedUrl, name);
+  a.download = name;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
