@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { AnalysesPanel } from "@/components/studio/AnalysesPanel";
+import { DossierTabs, useDossierTab } from "@/components/studio/DossierTabs";
 import { ReviewsPanel } from "@/components/studio/ReviewsPanel";
 import { MetricsReviewPanel } from "@/components/studio/MetricsReviewPanel";
 import { SubmissionDetail } from "@/components/studio/SubmissionCard";
@@ -57,6 +58,8 @@ const collectionStatusLabel: Record<string, string> = {
 function StudioClient() {
   const { clientId } = Route.useParams();
   const fetchDossier = useServerFn(getStudioDossier);
+  // Onglet actif = hash de l'URL (jamais la position de défilement).
+  const tab = useDossierTab();
 
   const { data, isLoading } = useQuery({
     queryKey: ["studio-dossier", clientId],
@@ -99,146 +102,160 @@ function StudioClient() {
         </Link>
       }
     >
-      <MissionNav />
+      <DossierTabs
+        active={tab.active}
+        onSelect={tab.select}
+        panels={{
+          "vue-ensemble": () => (
+            <section aria-labelledby="corpus-title" className="surface-panel p-4 sm:p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="corpus-title" className="font-display text-base font-bold text-foreground">
+                  Corpus actif du diagnostic
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Seules les réponses retenues par Sawaz alimentent ces indicateurs.
+                </p>
+              </div>
 
-      <section id="vue-ensemble" aria-labelledby="corpus-title" className="surface-panel scroll-mt-16 p-4 sm:p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="corpus-title" className="font-display text-base font-bold text-foreground">
-            Corpus actif du diagnostic
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Seules les réponses retenues par Sawaz alimentent ces indicateurs.
-          </p>
-        </div>
+              {!dossier.qualificationsAvailable ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Qualification indisponible pour le moment : le corpus actif ne peut pas être
+                  établi.
+                </p>
+              ) : null}
 
-        {!dossier.qualificationsAvailable ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Qualification indisponible pour le moment : le corpus actif ne peut pas être établi.
-          </p>
-        ) : null}
+              <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                <KpiTile label="Réponses de référence" value={corpus.references} />
+                <KpiTile
+                  label="Répondant"
+                  value={
+                    respondent
+                      ? corpus.respondents.length > 1
+                        ? `${respondent.label} +${corpus.respondents.length - 1}`
+                        : respondent.label
+                      : "Non attribué"
+                  }
+                  hint={respondent ? ATTRIBUTION_LABEL[respondent.attributionSource] : undefined}
+                />
+                <KpiTile label="Documents analysables" value={corpus.documents} />
+                <KpiTile
+                  label="Dernière réponse de référence"
+                  value={
+                    corpus.lastReferenceAt ? formatParisDateTime(corpus.lastReferenceAt) : "Aucune"
+                  }
+                  compact
+                />
+              </div>
 
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiTile label="Réponses de référence" value={corpus.references} />
-          <KpiTile
-            label="Répondant"
-            value={
-              respondent
-                ? corpus.respondents.length > 1
-                  ? `${respondent.label} +${corpus.respondents.length - 1}`
-                  : respondent.label
-                : "Non attribué"
-            }
-            hint={respondent ? ATTRIBUTION_LABEL[respondent.attributionSource] : undefined}
-          />
-          <KpiTile label="Documents analysables" value={corpus.documents} />
-          <KpiTile
-            label="Dernière réponse de référence"
-            value={corpus.lastReferenceAt ? formatParisDateTime(corpus.lastReferenceAt) : "Aucune"}
-            compact
-          />
-        </div>
+              <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                <KpiTile label="Missions" value={dossier.projects.length} secondary />
+                <KpiTile label="Collectes" value={dossier.collections.length} secondary />
+                <KpiTile label="Indicateurs" value={dossier.metrics.length} secondary />
+                <KpiTile
+                  label="Historique"
+                  value={corpus.historyCount}
+                  hint={
+                    corpus.historyByLabel.length > 0
+                      ? corpus.historyByLabel
+                          .map((h) => `${h.count} ${h.label.toLowerCase()}`)
+                          .join(" · ")
+                      : "Aucune autre réponse"
+                  }
+                  secondary
+                />
+              </div>
+            </section>
+          ),
+          missions: () => (
+            <Panel title="Missions et collectes">
+              <ul className="space-y-2 text-sm">
+                {dossier.projects.map((p) => {
+                  const cols = dossier.collections.filter((c) => c.projectId === p.id);
+                  return (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2.5"
+                    >
+                      <span className="text-foreground">
+                        {p.name}
+                        {p.periodLabel ? (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {p.periodLabel}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="flex flex-wrap gap-2">
+                        <StatusBadge tone="neutral">
+                          Mission {(projectStatusLabel[p.status] ?? "en cours").toLowerCase()}
+                        </StatusBadge>
+                        {cols.map((c) => (
+                          <StatusBadge key={c.id} tone="sawaz">
+                            Collecte {(collectionStatusLabel[c.status] ?? "en cours").toLowerCase()}
+                          </StatusBadge>
+                        ))}
+                      </span>
+                    </li>
+                  );
+                })}
+                {dossier.projects.length === 0 ? (
+                  <li className="text-muted-foreground">
+                    Aucune mission pour ce client : crée une mission et sa collecte pour recevoir
+                    des réponses.
+                  </li>
+                ) : null}
+              </ul>
+            </Panel>
+          ),
+          reponses: () => (
+            <div className="space-y-3">
+              <div>
+                <h2 className="font-display text-lg font-extrabold text-foreground">Réponses</h2>
+                <p className="text-sm text-muted-foreground">
+                  Donnée brute déclarée par les répondants, présentée avec la qualification Sawaz.
+                </p>
+              </div>
 
-        <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiTile label="Missions" value={dossier.projects.length} secondary />
-          <KpiTile label="Collectes" value={dossier.collections.length} secondary />
-          <KpiTile label="Indicateurs" value={dossier.metrics.length} secondary />
-          <KpiTile
-            label="Historique"
-            value={corpus.historyCount}
-            hint={
-              corpus.historyByLabel.length > 0
-                ? corpus.historyByLabel.map((h) => `${h.count} ${h.label.toLowerCase()}`).join(" · ")
-                : "Aucune autre réponse"
-            }
-            secondary
-          />
-        </div>
-      </section>
-
-      <div id="missions" className="scroll-mt-16">
-        <Panel title="Missions et collectes">
-          <ul className="space-y-2 text-sm">
-            {dossier.projects.map((p) => {
-              const cols = dossier.collections.filter((c) => c.projectId === p.id);
-              return (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2.5"
-                >
-                  <span className="text-foreground">
-                    {p.name}
-                    {p.periodLabel ? (
-                      <span className="ml-2 text-xs text-muted-foreground">{p.periodLabel}</span>
-                    ) : null}
-                  </span>
-                  <span className="flex flex-wrap gap-2">
-                    <StatusBadge tone="neutral">
-                      Mission {(projectStatusLabel[p.status] ?? "en cours").toLowerCase()}
-                    </StatusBadge>
-                    {cols.map((c) => (
-                      <StatusBadge key={c.id} tone="sawaz">
-                        Collecte {(collectionStatusLabel[c.status] ?? "en cours").toLowerCase()}
-                      </StatusBadge>
-                    ))}
-                  </span>
-                </li>
-              );
-            })}
-            {dossier.projects.length === 0 ? (
-              <li className="text-muted-foreground">
-                Aucune mission pour ce client : crée une mission et sa collecte pour recevoir des
-                réponses.
-              </li>
-            ) : null}
-          </ul>
-        </Panel>
-      </div>
-
-      <div id="reponses" className="scroll-mt-16 space-y-3">
-        <div>
-          <h2 className="font-display text-lg font-extrabold text-foreground">Réponses</h2>
-          <p className="text-sm text-muted-foreground">
-            Donnée brute déclarée par les répondants, présentée avec la qualification Sawaz.
-          </p>
-        </div>
-
-        {dossier.submissions.length === 0 ? (
-          <Panel title="Aucune réponse reçue">
-            <p className="text-sm text-muted-foreground">
-              Aucun répondant n’a encore commencé la collecte. Les réponses apparaîtront ici dès
-              l’ouverture du lien de collecte par le client.
-            </p>
-          </Panel>
-        ) : (
-          <SubmissionsSection
-            submissions={dossier.submissions}
-            qualificationsAvailable={dossier.qualificationsAvailable}
-            renderDetail={(s) => <SubmissionDetail submission={s} canWrite={canWrite} />}
-          />
-        )}
-      </div>
-
-      <div id="indicateurs" className="scroll-mt-16">
-        <MetricsReviewPanel
-          metrics={dossier.metrics}
-          canWrite={canWrite}
-          analyzableDocuments={corpus.documents}
-        />
-      </div>
-
-      <div id="analyse" className="scroll-mt-16">
-        <AnalysesPanel clientId={dossier.client.id} analyses={dossier.analyses} canWrite={canWrite} />
-      </div>
-
-      <div id="restitution" className="scroll-mt-16">
-        <ReviewsPanel
-          clientSlug={clientId}
-          clientId={dossier.client.id}
-          projects={dossier.projects}
-          collections={dossier.collections}
-          canWrite={canWrite}
-        />
-      </div>
+              {dossier.submissions.length === 0 ? (
+                <Panel title="Aucune réponse reçue">
+                  <p className="text-sm text-muted-foreground">
+                    Aucun répondant n’a encore commencé la collecte. Les réponses apparaîtront ici
+                    dès l’ouverture du lien de collecte par le client.
+                  </p>
+                </Panel>
+              ) : (
+                <SubmissionsSection
+                  submissions={dossier.submissions}
+                  qualificationsAvailable={dossier.qualificationsAvailable}
+                  renderDetail={(s) => <SubmissionDetail submission={s} canWrite={canWrite} />}
+                />
+              )}
+            </div>
+          ),
+          indicateurs: () => (
+            <MetricsReviewPanel
+              metrics={dossier.metrics}
+              canWrite={canWrite}
+              analyzableDocuments={corpus.documents}
+            />
+          ),
+          analyse: () => (
+            <AnalysesPanel
+              clientId={dossier.client.id}
+              analyses={dossier.analyses}
+              canWrite={canWrite}
+            />
+          ),
+          restitution: () => (
+            <ReviewsPanel
+              clientSlug={clientId}
+              clientId={dossier.client.id}
+              projects={dossier.projects}
+              collections={dossier.collections}
+              canWrite={canWrite}
+            />
+          ),
+        }}
+      />
     </StudioShell>
   );
 }
@@ -277,61 +294,5 @@ function KpiTile({
       </p>
       {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
-  );
-}
-
-const MISSION_SECTIONS = [
-  ["vue-ensemble", "Vue d’ensemble"],
-  ["missions", "Missions"],
-  ["reponses", "Réponses"],
-  ["indicateurs", "Indicateurs"],
-  ["analyse", "Analyse"],
-  ["restitution", "Restitution"],
-] as const;
-
-/** Sous-navigation de mission : ancres vers les sections du dossier, section visible active. */
-function MissionNav() {
-  const [active, setActive] = useState<string>(MISSION_SECTIONS[0][0]);
-
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (visible) setActive(visible.target.id);
-      },
-      { rootMargin: "-20% 0px -65% 0px" },
-    );
-    for (const [id] of MISSION_SECTIONS) {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <nav
-      aria-label="Sections de la mission"
-      className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-1 py-2 backdrop-blur"
-    >
-      {MISSION_SECTIONS.map(([id, label]) => (
-        <a
-          key={id}
-          href={`#${id}`}
-          onClick={() => setActive(id)}
-          aria-current={active === id ? "true" : undefined}
-          className={cn(
-            "rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition",
-            active === id
-              ? "bg-sawaz/10 text-sawaz"
-              : "text-muted-foreground hover:bg-surface hover:text-foreground",
-          )}
-        >
-          {label}
-        </a>
-      ))}
-    </nav>
   );
 }

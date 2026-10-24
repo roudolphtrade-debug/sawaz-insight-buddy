@@ -59,11 +59,7 @@ export function SubmissionsSection({
         )}
       </section>
 
-      <details
-        id="historique"
-        data-history
-        className="group surface-panel scroll-mt-20 p-0 [&[open]]:pb-2"
-      >
+      <details data-history className="group surface-panel p-0 [&[open]]:pb-2">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
           <span>
             <span className="font-display text-base font-bold text-foreground">
