@@ -172,6 +172,9 @@ describe("onglet Missions", () => {
     expect(html.match(/ouverte le/g)).toHaveLength(1);
     expect(html).toContain("Dernière activité");
     expect(html).not.toContain("—");
+    // Badges métier : mission en cours en indigo, collecte ouverte en cyan.
+    expect(html).toContain("#5b5fc7");
+    expect(html).toContain("#0891b2");
   });
 
   test("libellés de collecte : heure puis identifiant court en cas d'égalité", () => {
