@@ -106,12 +106,14 @@ export function OverviewPanel({
         <div className="grid gap-3 sm:grid-cols-3">
           <KpiCard
             icon={ShieldCheck}
+            tone="vue-ensemble"
             label="Réponses de référence"
             value={corpus.references}
             hint={corpus.references > 0 ? "Corpus actif" : "Aucune réponse retenue"}
           />
           <KpiCard
             icon={UserRound}
+            tone="vue-ensemble"
             label="Répondant"
             value={
               respondent
@@ -124,6 +126,7 @@ export function OverviewPanel({
           />
           <KpiCard
             icon={FileStack}
+            tone="reponses"
             label="Documents analysables"
             value={corpus.documents}
             hint="Issus des réponses de référence"
@@ -134,6 +137,7 @@ export function OverviewPanel({
           <KpiCard
             emphasis="secondary"
             icon={FolderOpen}
+            tone="missions"
             label="Missions"
             value={dossier.projects.length}
             hint={runningProjects > 0 ? `${runningProjects} en cours` : undefined}
@@ -141,6 +145,7 @@ export function OverviewPanel({
           <KpiCard
             emphasis="secondary"
             icon={Inbox}
+            tone="missions"
             label="Collectes"
             value={dossier.collections.length}
             hint={openCollections > 0 ? plural(openCollections, "ouverte") : undefined}
@@ -148,6 +153,7 @@ export function OverviewPanel({
           <KpiCard
             emphasis="secondary"
             icon={BarChart3}
+            tone="indicateurs"
             label="Indicateurs"
             value={dossier.metrics.length}
             hint={`${metricsToReview} à vérifier`}
@@ -155,6 +161,7 @@ export function OverviewPanel({
           <KpiCard
             emphasis="secondary"
             icon={History}
+            tone="neutre"
             label="Historique"
             value={corpus.historyCount}
             hint={
@@ -184,9 +191,9 @@ export function OverviewPanel({
                 ) : null}
               </p>
               <div className="flex flex-wrap gap-2">
-                <StatusBadge tone="neutral">{projectStatusText(activeProject.status)}</StatusBadge>
+                <StatusBadge tone="indigo">{projectStatusText(activeProject.status)}</StatusBadge>
                 {activeCollections.map((c) => (
-                  <StatusBadge key={c.id} tone="sawaz">
+                  <StatusBadge key={c.id} tone="cyan">
                     {collectionStatusText(c.status)}
                   </StatusBadge>
                 ))}
@@ -217,9 +224,9 @@ export function OverviewPanel({
                 {reference.qualification?.respondentLabel ?? "Répondant non identifié"}
               </p>
               <div className="flex flex-wrap gap-2">
-                <StatusBadge tone="gold">{qualificationLabel(reference.qualification)}</StatusBadge>
+                <StatusBadge tone="sawaz">{qualificationLabel(reference.qualification)}</StatusBadge>
                 {reference.qualification?.respondentLabel ? (
-                  <StatusBadge tone="neutral">
+                  <StatusBadge tone="slate">
                     {ATTRIBUTION_LABEL[reference.qualification.attributionSource]}
                   </StatusBadge>
                 ) : null}
@@ -322,7 +329,7 @@ function RestitutionSummary({
       title="Restitution"
       aside={
         main ? (
-          <StatusBadge tone={main.status === "published" ? "gold" : "sawaz"}>
+          <StatusBadge tone={main.status === "published" ? "success" : "slate"}>
             {REVIEW_STATUS_LABEL[main.status as ReviewStatus]}
           </StatusBadge>
         ) : (
