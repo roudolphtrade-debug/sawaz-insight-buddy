@@ -190,7 +190,7 @@ export function Panel({
 }
 
 const statusTone = {
-  disponible: "gold",
+  disponible: "success",
   partiel: "sawaz",
   indisponible: "neutral",
   facultatif: "neutral",

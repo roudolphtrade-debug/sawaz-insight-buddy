@@ -115,7 +115,7 @@ function StudioIndex() {
                       sub={`${client.files} document${client.files > 1 ? "s" : ""} au total`}
                     />
                     <td className="px-4 py-3">
-                      <StatusBadge tone={client.reviewPublished ? "gold" : "sawaz"}>
+                      <StatusBadge tone={client.reviewPublished ? "success" : "sawaz"}>
                         {client.reviewPublished ? "Restitution partagée" : "Restitution non partagée"}
                       </StatusBadge>
                       {client.metricsToReview > 0 ? (
