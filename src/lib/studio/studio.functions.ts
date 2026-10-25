@@ -107,7 +107,13 @@ export type StudioAnalysis = {
 export type StudioDossier = {
   client: { id: string; slug: string; name: string; sector: string | null };
   projects: { id: string; name: string; periodLabel: string | null; status: string }[];
-  collections: { id: string; projectId: string; status: string; openedAt: string | null }[];
+  collections: {
+    id: string;
+    projectId: string;
+    status: string;
+    openedAt: string | null;
+    createdAt: string;
+  }[];
   submissions: StudioSubmission[];
   metrics: StudioMetric[];
   analyses: StudioAnalysis[];
@@ -267,7 +273,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
           .order("created_at"),
         supabase
           .from("collections")
-          .select("id, project_id, status, opened_at")
+          .select("id, project_id, status, opened_at, created_at")
           .eq("client_id", client.id),
         supabase
           .from("submissions")
@@ -333,6 +339,7 @@ export const getStudioDossier = createServerFn({ method: "POST" })
           projectId: c.project_id ?? "",
           status: c.status,
           openedAt: c.opened_at,
+          createdAt: c.created_at,
         })),
         submissions: (submissions.data ?? []).map((s) => {
           const contact = contactByCollection.get(s.collection_id) ?? null;

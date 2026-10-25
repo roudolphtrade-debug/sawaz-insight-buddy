@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import type { DossierTabId } from "@/lib/studio/dossier-tabs";
+import { formatParisDate, formatParisDateTime } from "@/lib/studio/qualification";
 
 /**
  * Repères visuels des sections du dossier : une icône discrète et une teinte d'accent
@@ -70,3 +71,37 @@ export const projectStatusText = (status: string) =>
   `Mission ${(PROJECT_STATUS_LABEL[status] ?? "en cours").toLowerCase()}`;
 export const collectionStatusText = (status: string) =>
   `Collecte ${(COLLECTION_STATUS_LABEL[status] ?? "en cours").toLowerCase()}`;
+
+/**
+ * Libellés des collectes d'une mission. Une collecte n'a pas de nom en base : le libellé
+ * est dérivé de sa date d'ouverture, à défaut de sa date de création (« Collecte ·
+ * 7 sept. 2026 »), avec l'heure puis l'identifiant court si deux libellés coïncident.
+ */
+export function collectionLabels(
+  collections: readonly { id: string; openedAt: string | null; createdAt: string }[],
+) {
+  const base = collections.map((c) => {
+    const date = c.openedAt ?? c.createdAt;
+    return {
+      id: c.id,
+      date,
+      detail: `${c.openedAt ? "ouverte le" : "créée le"} ${formatParisDateTime(date)}`,
+    };
+  });
+  const dayCount = new Map<string, number>();
+  for (const b of base) {
+    const day = formatParisDate(b.date);
+    dayCount.set(day, (dayCount.get(day) ?? 0) + 1);
+  }
+  const titles = base.map((b) => {
+    const day = formatParisDate(b.date);
+    return (dayCount.get(day) ?? 0) > 1 ? formatParisDateTime(b.date) : day;
+  });
+  return new Map(
+    base.map((b, i) => {
+      const unique = titles.filter((t) => t === titles[i]).length === 1;
+      const title = `Collecte · ${titles[i]}${unique ? "" : ` · ${b.id.slice(0, 8)}`}`;
+      return [b.id, { title, detail: b.detail }] as const;
+    }),
+  );
+}

@@ -249,6 +249,14 @@ export function formatParisDateTime(value: string | null): string {
   return `${parisDate.format(date)} · ${parisTime.format(date)}`;
 }
 
+/** « 7 sept. 2026 », jour de Paris. */
+export function formatParisDate(value: string | null): string {
+  if (!value) return "Date inconnue";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date inconnue";
+  return parisDate.format(date);
+}
+
 /** « 1,2 Mo », « 340 Ko ». */
 export function formatFileSize(bytes: number): string {
   if (!bytes || bytes < 0) return "Taille inconnue";

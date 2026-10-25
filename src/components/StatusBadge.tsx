@@ -9,7 +9,8 @@ const toneClass: Record<Tone, string> = {
   sawaz: "border-sawaz/40 bg-sawaz/10 text-sawaz",
   neutral: "border-border-strong bg-surface-raised text-muted-foreground",
   success: "border-primary/25 bg-surface-raised text-foreground",
-  warn: "border-warn/30 bg-warn/10 text-warn",
+  // Ambre discret, texte assombri pour rester lisible (contraste AA) sur fond clair.
+  warn: "border-warn/35 bg-warn/10 text-[color-mix(in_srgb,var(--color-warn)_75%,black)]",
 };
 
 export function StatusBadge({

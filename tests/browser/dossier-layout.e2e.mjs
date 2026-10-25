@@ -151,6 +151,79 @@ try {
   assert.equal(writes, 0);
   ok("dossier complet : brouillon Analyse conservé, aucun enregistrement serveur");
 
+  // Non-régression du corpus : Raphaël en référence, 16 documents analysables.
+  await page.getByRole("tab", { name: "Vue d’ensemble", exact: true }).click();
+  const overview = await page.locator('[data-dossier-panel="vue-ensemble"]').innerText();
+  assert.match(overview, /Raphaël/);
+  assert.match(overview, /DOCUMENTS ANALYSABLES\s+16/i);
+
+  // Missions : deux collectes identifiées par une date réelle (ouverture, sinon création).
+  await page.getByRole("tab", { name: "Missions", exact: true }).click();
+  const collections = await page.$$eval("[data-collection]", (rows) =>
+    rows.map((r) => r.querySelector("span.font-semibold")?.textContent),
+  );
+  assert.deepEqual(collections, ["Collecte · 7 sept. 2026", "Collecte · 21 oct. 2026"]);
+  ok("Missions : collectes distinguées par leur date, corpus Raphaël · 16 documents intact");
+
+  // Analyse : texte d'aide selon le type, brouillon conservé au changement de type.
+  await page.getByRole("tab", { name: "Analyse", exact: true }).click();
+  await page.fill('[aria-label="Contenu de l\'analyse"]', "Contenu du brouillon");
+  const expected = {
+    Constat: "Destiné au client : peut alimenter la restitution.",
+    Hypothèse: "Destiné au client : peut alimenter la restitution.",
+    Recommandation: "Destiné au client : peut alimenter la restitution.",
+    "Note interne": "Interne Sawaz : jamais visible côté client et exclue de la restitution.",
+  };
+  for (const [label, hint] of Object.entries(expected)) {
+    const button = page.locator('[data-dossier-panel="analyse"] button[aria-pressed]', {
+      hasText: label,
+    });
+    await button.first().click();
+    assert.equal(await button.first().getAttribute("aria-pressed"), "true");
+    assert.equal(await page.textContent("[data-analysis-visibility]"), hint);
+    assert.equal(
+      await page.inputValue('[aria-label="Titre de l\'analyse"]'),
+      "Brouillon dossier complet",
+    );
+    assert.equal(
+      await page.inputValue('[aria-label="Contenu de l\'analyse"]'),
+      "Contenu du brouillon",
+    );
+  }
+  ok("Analyse : aide dynamique pour les quatre types, brouillon conservé");
+
+  // Badge « à vérifier » : ambre discret s'il y a des indicateurs, sobre à zéro.
+  const badgeColour = async (variant) => {
+    await page.goto(`${base}/${variant}/studio/lftc#indicateurs`);
+    const badge = page.locator('[data-dossier-panel="indicateurs"] .status-badge', {
+      hasText: "à vérifier",
+    });
+    return badge.first().evaluate((el) => {
+      const rgb = (v) =>
+        v
+          .match(/[\d.]+/g)
+          .slice(0, 3)
+          .map(Number);
+      const s = getComputedStyle(el);
+      return { text: el.textContent, color: rgb(s.color), background: rgb(s.backgroundColor) };
+    });
+  };
+  const amber = await badgeColour("rempli");
+  const [r, g, b] = amber.color;
+  assert.equal(amber.text, "1 à vérifier");
+  assert.ok(r > g && g > b && g / r > 0.5, `ambre attendu, reçu ${amber.color}`);
+  const zero = await badgeColour("plein");
+  const spread = Math.max(...zero.color) - Math.min(...zero.color);
+  assert.equal(zero.text, "0 à vérifier");
+  assert.ok(spread < 60, `ton neutre attendu à zéro, reçu ${zero.color}`);
+  ok("Indicateurs : « 1 à vérifier » ambre (pas de rouge), « 0 à vérifier » sobre");
+
+  const finalWrites = await page.evaluate(
+    (names) => window.__serverCalls.filter((c) => names.includes(c.name)).length,
+    WRITES,
+  );
+  assert.equal(finalWrites, 0);
+
   assert.deepEqual(pageErrors, [], "aucune erreur JavaScript");
   console.log(`\n${steps} étapes réussies`);
 } catch (error) {

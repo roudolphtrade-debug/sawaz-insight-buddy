@@ -23,9 +23,16 @@ export function lftcDossier(rempli: boolean): StudioDossier {
         id: "9b42c950",
         projectId: "project-lftc",
         status: "open",
-        openedAt: "2026-09-08T09:00:00Z",
+        openedAt: "2026-09-07T09:00:00Z",
+        createdAt: "2026-09-06T16:00:00Z",
       },
-      { id: "3101bc6c", projectId: "project-lftc", status: "open", openedAt: null },
+      {
+        id: "3101bc6c",
+        projectId: "project-lftc",
+        status: "open",
+        openedAt: null,
+        createdAt: "2026-10-21T08:30:00Z",
+      },
     ],
     submissions: lftcSubmissions(),
     metrics: rempli

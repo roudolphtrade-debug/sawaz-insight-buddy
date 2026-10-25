@@ -6,7 +6,7 @@ import { CardHeader, KpiCard, SummaryCard } from "../src/components/studio/Dossi
 import { EmptyState } from "../src/components/studio/EmptyState";
 import { MissionsPanel } from "../src/components/studio/MissionsPanel";
 import { StatusBadge } from "../src/components/StatusBadge";
-import { joinMeta, plural, SECTION_ICON } from "../src/lib/studio/sections";
+import { collectionLabels, joinMeta, plural, SECTION_ICON } from "../src/lib/studio/sections";
 import { DOSSIER_TABS } from "../src/lib/studio/dossier-tabs";
 import { lftcSubmissions } from "./fixtures/lftc";
 
@@ -68,9 +68,11 @@ describe("composants visuels communs de Sawaz Pilot", () => {
       expect(html).toContain("status-badge");
       expect(html).toContain("rounded-full");
     }
-    expect(renderToStaticMarkup(<StatusBadge tone="warn">À vérifier</StatusBadge>)).toContain(
-      "text-warn",
-    );
+    // « À vérifier » : ambre discret (jeton warn), jamais le rouge des erreurs.
+    const warn = renderToStaticMarkup(<StatusBadge tone="warn">À vérifier</StatusBadge>);
+    expect(warn).toContain("bg-warn/10");
+    expect(warn).toContain("var(--color-warn)");
+    expect(warn).not.toMatch(/destructive|--color-bad|text-bad|bg-bad/);
   });
 
   test("une icône par onglet, séparateur et pluriels sans cadratin", () => {
@@ -94,8 +96,20 @@ describe("onglet Missions", () => {
       <MissionsPanel
         projects={projects}
         collections={[
-          { id: "9b42c950", projectId: "p1", status: "open", openedAt: "2026-09-08T09:00:00Z" },
-          { id: "3101bc6c", projectId: "p1", status: "open", openedAt: null },
+          {
+            id: "9b42c950",
+            projectId: "p1",
+            status: "open",
+            openedAt: "2026-09-07T09:00:00Z",
+            createdAt: "2026-09-06T16:00:00Z",
+          },
+          {
+            id: "3101bc6c",
+            projectId: "p1",
+            status: "open",
+            openedAt: null,
+            createdAt: "2026-10-21T08:30:00Z",
+          },
         ]}
         submissions={lftcSubmissions()}
       />,
@@ -106,10 +120,29 @@ describe("onglet Missions", () => {
     expect(html).toContain("2 ouvertes");
     expect(html).toContain("6 réponses · 1 référence");
     expect(html).toContain("1 réponse");
-    // Date d'ouverture absente : pas de faux champ.
+    // Collectes sans nom en base : libellé dérivé de la date d'ouverture, sinon de création.
+    expect(html).toContain("Collecte · 7 sept. 2026");
+    expect(html).toContain("ouverte le 7 sept. 2026 · 11:00");
+    expect(html).toContain("Collecte · 21 oct. 2026");
+    expect(html).toContain("créée le 21 oct. 2026 · 10:30");
     expect(html.match(/ouverte le/g)).toHaveLength(1);
     expect(html).toContain("Dernière activité");
     expect(html).not.toContain("—");
+  });
+
+  test("libellés de collecte : heure puis identifiant court en cas d'égalité", () => {
+    const sameDay = collectionLabels([
+      { id: "aaaaaaaa-1", openedAt: "2026-09-07T09:00:00Z", createdAt: "2026-09-01T00:00:00Z" },
+      { id: "bbbbbbbb-2", openedAt: "2026-09-07T14:00:00Z", createdAt: "2026-09-01T00:00:00Z" },
+    ]);
+    expect(sameDay.get("aaaaaaaa-1")?.title).toBe("Collecte · 7 sept. 2026 · 11:00");
+    expect(sameDay.get("bbbbbbbb-2")?.title).toBe("Collecte · 7 sept. 2026 · 16:00");
+
+    const sameMinute = collectionLabels([
+      { id: "aaaaaaaa-1", openedAt: "2026-09-07T09:00:00Z", createdAt: "2026-09-01T00:00:00Z" },
+      { id: "bbbbbbbb-2", openedAt: "2026-09-07T09:00:00Z", createdAt: "2026-09-01T00:00:00Z" },
+    ]);
+    expect(sameMinute.get("bbbbbbbb-2")?.title).toBe("Collecte · 7 sept. 2026 · 11:00 · bbbbbbbb");
   });
 
   test("aucune mission : état vide explicite", () => {

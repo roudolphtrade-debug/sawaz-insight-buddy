@@ -237,10 +237,14 @@ export function AnalysesPanel({
               ) : null}
 
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">
+                <p
+                  data-analysis-visibility
+                  aria-live="polite"
+                  className="text-xs text-muted-foreground"
+                >
                   {type === "note"
-                    ? "Note interne : jamais visible côté client."
-                    : "Destiné au client : pourra alimenter la restitution."}
+                    ? "Interne Sawaz : jamais visible côté client et exclue de la restitution."
+                    : "Destiné au client : peut alimenter la restitution."}
                 </p>
                 <button
                   type="button"

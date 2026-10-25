@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatParisDateTime, isInActiveCorpus } from "@/lib/studio/qualification";
 import {
   COLLECTION_STATUS_LABEL,
+  collectionLabels,
   collectionStatusText,
   joinMeta,
   plural,
@@ -52,6 +53,7 @@ export function MissionsPanel({
         <ul className="space-y-4">
           {projects.map((project) => {
             const cols = collections.filter((c) => c.projectId === project.id);
+            const labels = collectionLabels(cols);
             const projectSubmissions = submissions.filter((s) =>
               cols.some((c) => c.id === s.collectionId),
             );
@@ -107,6 +109,7 @@ export function MissionsPanel({
                     {cols.map((c) => {
                       const received = submissions.filter((s) => s.collectionId === c.id);
                       const references = received.filter(isInActiveCorpus).length;
+                      const label = labels.get(c.id);
                       return (
                         <li
                           key={c.id}
@@ -118,11 +121,13 @@ export function MissionsPanel({
                               className="size-4 shrink-0 text-muted-foreground"
                               aria-hidden="true"
                             />
-                            <span className="font-semibold text-foreground">Collecte</span>
-                            {c.openedAt ? (
+                            <span className="font-semibold text-foreground">
+                              {label?.title ?? "Collecte"}
+                            </span>
+                            {label ? (
                               <span className="inline-flex items-center gap-1 text-muted-foreground">
                                 <CalendarDays className="size-3.5" aria-hidden="true" />
-                                ouverte le {formatParisDateTime(c.openedAt)}
+                                {label.detail}
                               </span>
                             ) : null}
                           </div>
