@@ -17,7 +17,7 @@ import {
   tabFromHash,
   type DossierTabId,
 } from "@/lib/studio/dossier-tabs";
-import { SECTION_ICON } from "@/lib/studio/sections";
+import { SECTION_ICON, toneClass } from "@/lib/studio/sections";
 import { cn } from "@/lib/utils";
 
 /**
@@ -117,15 +117,18 @@ export function DossierTabs({
                 activate(tab.id, false);
               }}
               onKeyDown={onKeyDown}
+              data-active={selected}
               className={cn(
+                "tab-tone",
+                toneClass(tab.id),
                 "inline-flex h-10 shrink-0 items-center gap-2 rounded-md border px-3.5 text-sm font-semibold whitespace-nowrap transition-colors",
                 selected
-                  ? "border-sawaz/30 bg-surface text-sawaz shadow-[inset_0_-2px_0_var(--color-sawaz),var(--shadow-elevated)]"
+                  ? "bg-surface"
                   : "border-transparent text-muted-foreground hover:border-border hover:bg-surface hover:text-foreground",
               )}
             >
               <Icon
-                className={cn("size-4 shrink-0", selected ? "text-sawaz" : "opacity-80")}
+                className={cn("tab-icon size-4 shrink-0", selected ? "" : "opacity-80")}
                 aria-hidden="true"
               />
               {tab.label}
