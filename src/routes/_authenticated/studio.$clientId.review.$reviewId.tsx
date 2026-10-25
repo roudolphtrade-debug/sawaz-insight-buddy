@@ -135,7 +135,7 @@ function ReviewBuilder() {
   if (isLoading || (!ws && !data)) {
     return (
       <StudioShell title="Restitution stratégique">
-        <Panel>ChargementÔÇª</Panel>
+        <Panel>Chargement…</Panel>
       </StudioShell>
     );
   }
