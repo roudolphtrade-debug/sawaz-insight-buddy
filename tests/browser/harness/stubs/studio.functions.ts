@@ -18,3 +18,19 @@ export async function deleteStudioAnalysis(input: unknown) {
   record("deleteStudioAnalysis", input);
   return { ok: true as const, data: null };
 }
+
+export async function qualifyStudioSubmission(input: unknown) {
+  record("qualifyStudioSubmission", input);
+  return { ok: true as const, data: null };
+}
+
+export async function reviewStudioMetric(input: unknown) {
+  record("reviewStudioMetric", input);
+  return { ok: true as const, data: null };
+}
+
+/** Lecture (non comptée comme enregistrement). */
+export async function getStudioFileUrl(input: unknown) {
+  record("read:getStudioFileUrl", input);
+  return { ok: false as const, error: "stub" };
+}

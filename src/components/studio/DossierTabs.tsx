@@ -17,6 +17,7 @@ import {
   tabFromHash,
   type DossierTabId,
 } from "@/lib/studio/dossier-tabs";
+import { SECTION_ICON } from "@/lib/studio/sections";
 import { cn } from "@/lib/utils";
 
 /**
@@ -79,14 +80,7 @@ export function DossierTabs({
   const activate = (id: DossierTabId, focus: boolean) => {
     onSelect(id);
     if (focus) document.getElementById(tabElementId(id))?.focus();
-    // Haut du nouveau panneau juste sous la barre d'onglets, seulement si l'utilisateur
-    // avait défilé au-delà : aucun saut lorsque la barre est déjà à sa place naturelle.
-    const nav = navRef.current;
-    if (!nav) return;
-    const naturalTop = nav.parentElement
-      ? nav.parentElement.getBoundingClientRect().top + window.scrollY
-      : 0;
-    if (window.scrollY > naturalTop) window.scrollTo({ top: naturalTop });
+    alignPanelTop(navRef.current);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
@@ -102,10 +96,11 @@ export function DossierTabs({
         ref={navRef}
         role="tablist"
         aria-label="Sections du dossier"
-        className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-1 py-2 backdrop-blur"
+        className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-1 py-2 backdrop-blur [scrollbar-width:thin]"
       >
         {DOSSIER_TABS.map((tab) => {
           const selected = tab.id === active;
+          const Icon = SECTION_ICON[tab.id];
           return (
             <a
               key={tab.id}
@@ -123,12 +118,16 @@ export function DossierTabs({
               }}
               onKeyDown={onKeyDown}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition",
+                "inline-flex h-10 shrink-0 items-center gap-2 rounded-md border px-3.5 text-sm font-semibold whitespace-nowrap transition-colors",
                 selected
-                  ? "bg-sawaz/10 text-sawaz shadow-[inset_0_-2px_0_var(--color-sawaz)]"
-                  : "text-muted-foreground hover:bg-surface hover:text-foreground",
+                  ? "border-sawaz/30 bg-surface text-sawaz shadow-[inset_0_-2px_0_var(--color-sawaz),var(--shadow-elevated)]"
+                  : "border-transparent text-muted-foreground hover:border-border hover:bg-surface hover:text-foreground",
               )}
             >
+              <Icon
+                className={cn("size-4 shrink-0", selected ? "text-sawaz" : "opacity-80")}
+                aria-hidden="true"
+              />
               {tab.label}
             </a>
           );
@@ -156,5 +155,56 @@ export function DossierTabs({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Haut du panneau juste sous la barre d'onglets, seulement si l'utilisateur avait défilé
+ * au-delà : aucun saut lorsque la barre est déjà à sa place naturelle.
+ */
+function alignPanelTop(nav: HTMLElement | null) {
+  if (!nav) return;
+  const naturalTop = nav.parentElement
+    ? nav.parentElement.getBoundingClientRect().top + window.scrollY
+    : 0;
+  if (window.scrollY > naturalTop) window.scrollTo({ top: naturalTop });
+}
+
+/**
+ * Lien interne vers un onglet du dossier (cartes de synthèse) : même navigation que la
+ * barre d'onglets (hash + historique), puis focus sur le panneau ouvert, puisque le
+ * lien cliqué disparaît avec le panneau masqué.
+ */
+export function TabLink({
+  to,
+  onSelect,
+  className,
+  children,
+}: {
+  to: DossierTabId;
+  onSelect: (id: DossierTabId) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={`#${to}`}
+      className={className}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+        event.preventDefault();
+        onSelect(to);
+        alignPanelTop(document.querySelector<HTMLElement>('[role="tablist"]'));
+        let attempts = 0;
+        const focusPanel = () => {
+          const panel = document.getElementById(panelElementId(to));
+          if (panel && !panel.hidden) panel.focus({ preventScroll: true });
+          else if (attempts++ < 30) requestAnimationFrame(focusPanel);
+        };
+        requestAnimationFrame(focusPanel);
+      }}
+    >
+      {children}
+    </a>
   );
 }

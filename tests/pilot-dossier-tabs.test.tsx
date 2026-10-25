@@ -203,16 +203,20 @@ describe("URL et historique du navigateur (routeur TanStack, historique mémoire
 });
 
 describe("le dossier n'utilise plus de scroll-spy", () => {
+  const read = (...path: string[]) =>
+    readFileSync(join(import.meta.dir, "..", "src", ...path), "utf8");
+
   test("ni IntersectionObserver ni ancres de section dans la page dossier", () => {
-    const source = readFileSync(
-      join(import.meta.dir, "..", "src", "routes", "_authenticated", "studio.$clientId.index.tsx"),
-      "utf8",
-    );
-    expect(source).not.toContain("IntersectionObserver");
-    expect(source).not.toContain("MissionNav");
-    expect(source).not.toMatch(
-      /id="(vue-ensemble|missions|reponses|indicateurs|analyse|restitution)"/,
-    );
-    expect(source).toContain("<DossierTabs");
+    const route = read("routes", "_authenticated", "studio.$clientId.index.tsx");
+    const view = read("components", "studio", "DossierView.tsx");
+    for (const source of [route, view]) {
+      expect(source).not.toContain("IntersectionObserver");
+      expect(source).not.toContain("MissionNav");
+      expect(source).not.toMatch(
+        /id="(vue-ensemble|missions|reponses|indicateurs|analyse|restitution)"/,
+      );
+    }
+    expect(route).toContain("<DossierView");
+    expect(view).toContain("<DossierTabs");
   });
 });

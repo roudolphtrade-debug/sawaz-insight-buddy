@@ -232,7 +232,7 @@
   --secondary: #eef2f6;
   --secondary-foreground: #0f1e2e;
   --muted: #eef2f6;
-  --muted-foreground: #5b6b7c;
+  --muted-foreground: #4b5b6c;
   --accent: #0a84e6;
   --accent-foreground: #ffffff;
   --border: #dde3ea;
@@ -262,4 +262,49 @@
 .pilot .surface-panel {
   box-shadow: var(--shadow-elevated);
   border-radius: var(--radius-lg);
+}
+
+/* Teintes d'accent des sections du dossier : pastilles d'icône uniquement. */
+.pilot .tone-vue-ensemble {
+  --tone: #0a6fc4;
+}
+.pilot .tone-missions {
+  --tone: #4f5bd5;
+}
+.pilot .tone-reponses {
+  --tone: #0a84e6;
+}
+.pilot .tone-indicateurs {
+  --tone: #0f8287;
+}
+.pilot .tone-analyse {
+  --tone: #7a4cc9;
+}
+.pilot .tone-restitution {
+  --tone: #24507e;
+}
+.pilot .tone-neutre {
+  --tone: #4b5b6c;
+}
+
+.pilot .section-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.5rem;
+  color: var(--tone, var(--sawaz));
+  background-color: color-mix(in srgb, var(--tone, var(--sawaz)) 10%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--sawaz)) 18%, transparent);
+}
+
+/* Famille unique de badges Pilot : hauteur, rayon, padding et corps identiques. */
+.pilot .status-badge {
+  height: 1.5rem;
+  padding-block: 0;
+  padding-inline: 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }

@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
+import { LogOut, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { SawazPilotMark } from "@/components/brand/PilotMark";
+import { CardHeader } from "@/components/studio/DossierUI";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
+import type { SectionTone } from "@/lib/studio/sections";
 import { cn } from "@/lib/utils";
 import type { DataStatus } from "@/lib/tenant/types";
 
@@ -89,19 +91,22 @@ function PilotNav() {
 export function StudioShell({
   title,
   subtitle,
+  meta,
   actions,
   className,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** Badges affichés à côté du titre (ex. rôle de l'utilisateur). */
+  meta?: ReactNode;
   actions?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <div className={cn("pilot min-h-screen lg:flex", className)}>
-      <aside className="flex flex-col gap-4 bg-[var(--nav)] px-4 py-4 text-[var(--nav-foreground)] lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:gap-8 lg:py-6">
+      <aside className="flex flex-col gap-4 bg-[var(--nav)] px-4 py-4 text-[var(--nav-foreground)] lg:sticky lg:top-0 lg:h-screen lg:w-56 lg:shrink-0 lg:gap-8 lg:py-6">
         <div className="flex items-center justify-between gap-3">
           <Link to="/studio" aria-label="Sawaz Pilot · accueil" className="rounded-md">
             <SawazPilotMark tone="dark" />
@@ -116,13 +121,17 @@ export function StudioShell({
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-10 lg:py-6">
-        <div className="mx-auto max-w-6xl">
+      {/* Canevas large : jusqu'à 1480 px utiles, marges réduites, textes longs bornés. */}
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-7 lg:py-6 2xl:px-10">
+        <div className="mx-auto w-full max-w-[1480px]" data-pilot-canvas>
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
-            <div>
-              <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-                {title}
-              </h1>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-[1.75rem]">
+                  {title}
+                </h1>
+                {meta}
+              </div>
               {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
             </div>
             {actions}
@@ -135,15 +144,22 @@ export function StudioShell({
   );
 }
 
+/** Carte de section Pilot : en-tête commun (icône, surtitre, titre, explication, action). */
 export function Panel({
   title,
   eyebrow,
+  description,
+  icon,
+  tone,
   children,
   className,
   aside,
 }: {
   title?: string;
   eyebrow?: string;
+  description?: ReactNode;
+  icon?: LucideIcon;
+  tone?: SectionTone;
   children: ReactNode;
   className?: string;
   aside?: ReactNode;
@@ -151,14 +167,15 @@ export function Panel({
   return (
     <section className={cn("surface-panel p-4 sm:p-5", className)}>
       {title || eyebrow ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            {eyebrow ? <p className="text-eyebrow text-sawaz">{eyebrow}</p> : null}
-            {title ? (
-              <h2 className="font-display text-base font-bold text-foreground">{title}</h2>
-            ) : null}
-          </div>
-          {aside}
+        <div className="mb-4">
+          <CardHeader
+            icon={icon}
+            tone={tone}
+            eyebrow={eyebrow}
+            title={title}
+            description={description}
+            aside={aside}
+          />
         </div>
       ) : null}
       {children}

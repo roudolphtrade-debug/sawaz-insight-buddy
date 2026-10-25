@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { BarChart3 } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/studio/EmptyState";
 import { Panel } from "@/components/studio/StudioShell";
 import { StatusBadge } from "@/components/StatusBadge";
+import { FIELD, joinMeta, SECONDARY_ACTION, SUB_CARD } from "@/lib/studio/sections";
 import { reviewStudioMetric, type StudioMetric } from "@/lib/studio/studio.functions";
 
 const STATUS_LABEL = {
@@ -21,7 +23,7 @@ const PROVENANCE_LABEL: Record<string, string> = {
 };
 
 const STATUS_TONE = {
-  a_verifier: "sawaz",
+  a_verifier: "warn",
   valide: "gold",
   rejete: "neutral",
 } as const;
@@ -52,14 +54,17 @@ export function MetricsReviewPanel({
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["studio-dossier"] }),
   });
 
+  const toReview = metrics.filter((m) => m.reviewStatus === "a_verifier").length;
+
   return (
     <Panel
+      icon={BarChart3}
+      tone="indicateurs"
       eyebrow="Indicateurs · ce que les données montrent"
       title="Vérification des indicateurs"
+      description="Chaque indicateur extrait des documents est vérifié par Sawaz avant de pouvoir alimenter une restitution."
       aside={
-        <StatusBadge tone="neutral">
-          {metrics.filter((m) => m.reviewStatus === "a_verifier").length} à vérifier
-        </StatusBadge>
+        <StatusBadge tone={toReview > 0 ? "warn" : "neutral"}>{toReview} à vérifier</StatusBadge>
       }
     >
       {metrics.length === 0 ? (
@@ -80,9 +85,15 @@ export function MetricsReviewPanel({
       ) : (
         <ul className="space-y-3">
           {metrics.map((m) => (
-            <li key={m.id} className="rounded-lg border border-border bg-surface-raised p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
+            <li key={m.id} data-metric className={`${SUB_CARD} p-4`}>
+              <div className="grid gap-4 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center">
+                <div className="rounded-md border border-border bg-surface px-3 py-2 text-center">
+                  <p className="font-display text-xl font-extrabold text-foreground tabular-nums">
+                    {m.valueNum ?? m.valueText ?? "?"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{m.unit ?? "sans unité"}</p>
+                </div>
+                <div className="min-w-0">
                   <p className="font-semibold text-foreground">
                     {m.metricKey}
                     {m.platform ? (
@@ -90,12 +101,11 @@ export function MetricsReviewPanel({
                     ) : null}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {m.valueNum ?? m.valueText ?? "Valeur absente"} {m.unit ?? ""} ·{" "}
-                    {m.periodStart ?? "?"} → {m.periodEnd ?? "?"} · provenance{" "}
-                    {PROVENANCE_LABEL[m.provenance] ?? "inconnue"}
-                    {m.confidence !== null
-                      ? ` · confiance ${Math.round(m.confidence * 100)}%`
-                      : ""}
+                    {joinMeta([
+                      `${m.periodStart ?? "?"} → ${m.periodEnd ?? "?"}`,
+                      `provenance ${PROVENANCE_LABEL[m.provenance] ?? "inconnue"}`,
+                      m.confidence !== null ? `confiance ${Math.round(m.confidence * 100)}%` : null,
+                    ])}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Source : {m.sourceFileName ?? "non rattachée"}
@@ -117,14 +127,14 @@ export function MetricsReviewPanel({
                     placeholder="Valeur corrigée"
                     value={drafts[m.id] ?? ""}
                     onChange={(e) => setDrafts({ ...drafts, [m.id]: e.target.value })}
-                    className="w-40 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-sawaz"
+                    className={`${FIELD} w-40`}
                   />
                   <input
                     aria-label={`Note de revue pour ${m.metricKey}`}
                     placeholder="Note de revue"
                     value={notes[m.id] ?? ""}
                     onChange={(e) => setNotes({ ...notes, [m.id]: e.target.value })}
-                    className="min-w-40 flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-sawaz"
+                    className={`${FIELD} w-auto min-w-40 flex-1`}
                   />
                   {(["valide", "rejete", "a_verifier"] as const).map((status) => (
                     <button
@@ -136,13 +146,11 @@ export function MetricsReviewPanel({
                         mutation.mutate({
                           id: m.id,
                           reviewStatus: status,
-                          ...(raw !== undefined && raw !== ""
-                            ? { valueNum: Number(raw) }
-                            : {}),
+                          ...(raw !== undefined && raw !== "" ? { valueNum: Number(raw) } : {}),
                           note: notes[m.id] ?? null,
                         });
                       }}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                      className={SECONDARY_ACTION}
                     >
                       {STATUS_LABEL[status]}
                     </button>
