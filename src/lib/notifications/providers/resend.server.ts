@@ -1,17 +1,17 @@
 import type { EmailMessage, EmailProvider, EmailSendResult } from "../email.server";
 
 /**
- * Provider transactionnel r├®el (API HTTP Resend), branch├® uniquement si la
- * configuration est pr├®sente. Aucun couplage m├®tier : le reste du code ne
- * conna├«t que l'interface `EmailProvider`.
+ * Provider transactionnel réel (API HTTP Resend), branché uniquement si la
+ * configuration est présente. Aucun couplage métier : le reste du code ne
+ * connaît que l'interface `EmailProvider`.
  *
- * Configuration serveur (secrets, jamais expos├®s au navigateur) :
+ * Configuration serveur (secrets, jamais exposés au navigateur) :
  *  - EMAIL_PROVIDER   : "resend" (sinon provider log)
- *  - RESEND_API_KEY   : cl├® API
+ *  - RESEND_API_KEY   : clé API
  *  - EMAIL_FROM       : "Sawaz <review@domaine-verifie.tld>"
  *  - EMAIL_REPLY_TO   : optionnel
  *
- * Le domaine d'envoi doit ├¬tre v├®rifi├® avec SPF, DKIM et DMARC ÔÇö voir
+ * Le domaine d'envoi doit être vérifié avec SPF, DKIM et DMARC : voir
  * docs/production-hardening.md.
  */
 
@@ -39,7 +39,7 @@ export function createResendProvider(config: {
             headers: {
               Authorization: `Bearer ${config.apiKey}`,
               "Content-Type": "application/json",
-              // Emp├¬che un double envoi si une tentative r├®ussit sans r├®ponse lisible.
+              // Empêche un double envoi si une tentative réussit sans réponse lisible.
               "Idempotency-Key": `${message.to}:${message.subject}`,
             },
             body: JSON.stringify({
@@ -60,7 +60,7 @@ export function createResendProvider(config: {
           lastError = `Provider email ${response.status}`;
           if (!RETRYABLE_STATUS.has(response.status)) break;
         } catch (error) {
-          lastError = error instanceof Error ? error.message : "Erreur r├®seau";
+          lastError = error instanceof Error ? error.message : "Erreur réseau";
         }
 
         if (attempt < MAX_ATTEMPTS) await wait(300 * 2 ** (attempt - 1));
@@ -72,7 +72,7 @@ export function createResendProvider(config: {
   };
 }
 
-/** R├®sout le provider r├®el depuis l'environnement, ou `null` si non configur├®. */
+/** Résout le provider réel depuis l'environnement, ou `null` si non configuré. */
 export function resendProviderFromEnv(): EmailProvider | null {
   if ((process.env['EMAIL_PROVIDER'] ?? "").toLowerCase() !== "resend") return null;
   const apiKey = process.env['RESEND_API_KEY'];

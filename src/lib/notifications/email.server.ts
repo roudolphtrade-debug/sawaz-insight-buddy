@@ -1,8 +1,8 @@
 /**
- * Pass 3F ÔÇö Abstraction de provider email.
- * Aucune d├®pendance forte : le reste du code ne conna├«t que l'interface
- * `EmailProvider`. Le provider r├®el est r├®solu au runtime ; sans configuration,
- * le provider "log" est utilis├® (rien n'est envoy├®, tout est trac├®).
+ * Pass 3F : Abstraction de provider email.
+ * Aucune dépendance forte : le reste du code ne connaît que l'interface
+ * `EmailProvider`. Le provider réel est résolu au runtime ; sans configuration,
+ * le provider "log" est utilisé (rien n'est envoyé, tout est tracé).
  */
 
 import { resendProviderFromEnv } from "./providers/resend.server";
@@ -12,7 +12,7 @@ export type EmailMessage = {
   subject: string;
   html: string;
   text: string;
-  /** Identit├® graphique du tenant, utilis├®e par le rendu. */
+  /** Identité graphique du tenant, utilisée par le rendu. */
   tenant: { name: string; primary: string; logoUrl: string | null };
 };
 
@@ -23,11 +23,11 @@ export interface EmailProvider {
   send(message: EmailMessage): Promise<EmailSendResult>;
 }
 
-/** Provider par d├®faut : trace la sortie serveur, n'envoie rien. */
+/** Provider par défaut : trace la sortie serveur, n'envoie rien. */
 export const logEmailProvider: EmailProvider = {
   id: "log",
   async send(message) {
-    console.info("[email:log]", message.to, "ÔÇö", message.subject);
+    console.info("[email:log]", message.to, "·", message.subject);
     return { ok: true, providerId: "log" };
   },
 };
@@ -41,8 +41,8 @@ export function setEmailProvider(provider: EmailProvider | null) {
 
 export function resolveEmailProvider(): EmailProvider {
   if (override) return override;
-  // Provider r├®el r├®solu au runtime (cl├®s lues ici, jamais au module scope).
-  // Sans configuration, on retombe sur le provider log : aucune d├®pendance forte.
+  // Provider réel résolu au runtime (clés lues ici, jamais au module scope).
+  // Sans configuration, on retombe sur le provider log : aucune dépendance forte.
   return resendProviderFromEnv() ?? logEmailProvider;
 }
 
@@ -54,7 +54,7 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-/** Gabarit transactionnel ┬½ Strategic Review disponible ┬╗, th├®m├® par tenant. */
+/** Gabarit transactionnel « Strategic Review disponible », thémé par tenant. */
 export function renderReviewPublishedEmail(input: {
   tenantName: string;
   primary: string;
@@ -79,17 +79,17 @@ export function renderReviewPublishedEmail(input: {
         <p style="margin:8px 0 0;font-size:14px;color:#94969F">${escapeHtml(input.periodLabel)}</p>
       </td></tr>
       <tr><td style="padding:18px 24px 0">
-        <p style="margin:0;font-size:15px;line-height:1.6;color:#D1D2D6">Bonjour ${escapeHtml(input.recipientName)},<br/>ton analyse strat├®gique est pr├¬te. Elle est accessible via un lien s├®curis├®, personnel et r├®vocable.</p>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#D1D2D6">Bonjour ${escapeHtml(input.recipientName)},<br/>ton analyse stratégique est prête. Elle est accessible via un lien sécurisé, personnel et révocable.</p>
       </td></tr>
       <tr><td style="padding:24px">
         <a href="${escapeHtml(input.url)}" style="display:inline-block;background:${escapeHtml(input.primary)};color:#0B0C0F;font-weight:700;font-size:15px;text-decoration:none;padding:13px 22px;border-radius:10px">Ouvrir ma Strategic Review</a>
-        <p style="margin:16px 0 0;font-size:12px;color:#94969F">Document confidentiel. Ne transf├¿re pas ce lien : il ouvre un acc├¿s ├á ta restitution.</p>
+        <p style="margin:16px 0 0;font-size:12px;color:#94969F">Document confidentiel. Ne transfère pas ce lien : il ouvre un accès à ta restitution.</p>
       </td></tr>
     </table>
     <p style="margin:16px 0 0;font-size:11px;color:#6B6D75">Sawaz Client Intelligence</p>
   </td></tr></table></body></html>`;
 
-  const text = `${input.reviewTitle}\n${input.periodLabel}\n\nTa Strategic Review est disponible : ${input.url}\n\nDocument confidentiel ÔÇö ne transf├¿re pas ce lien.`;
+  const text = `${input.reviewTitle}\n${input.periodLabel}\n\nTa Strategic Review est disponible : ${input.url}\n\nDocument confidentiel : ne transfère pas ce lien.`;
 
   return { subject, html, text };
 }

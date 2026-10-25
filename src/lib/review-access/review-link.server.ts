@@ -16,10 +16,10 @@ import {
 } from "@/lib/studio/review-content";
 
 /**
- * Pass 3F ÔÇö Publication d'une Strategic Review et acc├¿s client.
- * Le secret du lien n'existe qu'une fois, en m├®moire : la base ne conserve
- * qu'un SHA-256. Apr├¿s validation, une session temporaire (cookie httpOnly)
- * remplace le secret, qui dispara├«t de l'URL.
+ * Pass 3F : Publication d'une Strategic Review et accès client.
+ * Le secret du lien n'existe qu'une fois, en mémoire : la base ne conserve
+ * qu'un SHA-256. Après validation, une session temporaire (cookie httpOnly)
+ * remplace le secret, qui disparaît de l'URL.
  */
 
 export const REVIEW_SESSION_COOKIE = "sawaz_review_session";
@@ -76,15 +76,15 @@ export function originUrl() {
 }
 
 /* ------------------------------------------------------------------ */
-/* ├ëmission / rotation / r├®vocation du lien                            */
+/* Émission / rotation / révocation du lien                            */
 /* ------------------------------------------------------------------ */
 
 export type IssuedLink = { linkId: string; token: string; url: string; expiresAt: string };
 
 /**
- * Cr├®e (ou renouvelle) le lien d'acc├¿s d'une version publi├®e.
- * Les liens actifs de la m├¬me review sont r├®voqu├®s : une rotation invalide
- * imm├®diatement l'ancien secret et les sessions ouvertes.
+ * Crée (ou renouvelle) le lien d'accès d'une version publiée.
+ * Les liens actifs de la même review sont révoqués : une rotation invalide
+ * immédiatement l'ancien secret et les sessions ouvertes.
  */
 export async function issueReviewLink(input: {
   clientId: string;
@@ -113,7 +113,7 @@ export async function issueReviewLink(input: {
     .select("id")
     .single();
 
-  if (error || !data) throw new ReviewAccessError("Cr├®ation du lien impossible");
+  if (error || !data) throw new ReviewAccessError("Création du lien impossible");
 
   await supabaseAdmin.from("audit_logs").insert({
     client_id: input.clientId,
@@ -156,7 +156,7 @@ async function revokeActiveLinks(versionIds: string[], reason: string) {
 
   await supabaseAdmin.from("secure_links").update({ revoked_at: now }).in("id", ids);
   await supabaseAdmin.from("link_sessions").update({ revoked_at: now }).in("secure_link_id", ids);
-  console.info("[review-link] r├®vocation", reason, ids.length);
+  console.info("[review-link] révocation", reason, ids.length);
 }
 
 export async function revokeReviewLinks(reviewId: string, actorId: string | null) {
@@ -186,9 +186,9 @@ export async function revokeReviewLinks(reviewId: string, actorId: string | null
 export type NotifyOutcome = { recipient: string; created: boolean; sent: boolean };
 
 /**
- * File une notification ┬½ Strategic Review disponible ┬╗ par destinataire.
- * `notifications.idempotency_key` (unique, d├®riv├®e du review_version_id et du
- * destinataire) garantit qu'une republication de la m├¬me version n'envoie pas
+ * File une notification « Strategic Review disponible » par destinataire.
+ * `notifications.idempotency_key` (unique, dérivée du review_version_id et du
+ * destinataire) garantit qu'une republication de la même version n'envoie pas
  * un second email.
  */
 export async function notifyReviewPublished(input: {
@@ -242,7 +242,7 @@ export async function notifyReviewPublished(input: {
         related_type: "review_version",
         related_id: input.versionId,
         review_version_id: input.versionId,
-        idempotency_key: "auto", // recalcul├®e par le trigger build_notification_idempotency_key
+        idempotency_key: "auto", // recalculée par le trigger build_notification_idempotency_key
         payload: {
           reviewTitle: input.reviewTitle,
           periodLabel: input.periodLabel,
@@ -253,7 +253,7 @@ export async function notifyReviewPublished(input: {
       .maybeSingle();
 
     if (error || !created) {
-      // Cl├® d'idempotence d├®j├á pr├®sente : la notification a d├®j├á ├®t├® trait├®e.
+      // Clé d'idempotence déjà présente : la notification a déjà été traitée.
       results.push({ recipient: target.email, created: false, sent: false });
       continue;
     }
@@ -297,7 +297,7 @@ export async function notifyReviewPublished(input: {
 
 export type ReviewSession = { sessionId: string; linkId: string; clientId: string; versionId: string };
 
-/** Valide le secret, ouvre une session temporaire, puis le secret peut dispara├«tre de l'URL. */
+/** Valide le secret, ouvre une session temporaire, puis le secret peut disparaître de l'URL. */
 export async function openReviewSession(token: string): Promise<ReviewSession> {
   await enforceRateLimit("reviewLink", callerSubject("review-link"));
   if (!token) {
@@ -313,11 +313,11 @@ export async function openReviewSession(token: string): Promise<ReviewSession> {
     .maybeSingle();
 
   if (!link) throw new ReviewAccessError("Lien invalide");
-  if (link.revoked_at) throw new ReviewAccessError("Lien r├®voqu├®");
+  if (link.revoked_at) throw new ReviewAccessError("Lien révoqué");
   if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
-    throw new ReviewAccessError("Lien expir├®");
+    throw new ReviewAccessError("Lien expiré");
   }
-  if (link.use_count >= link.max_uses) throw new ReviewAccessError("Lien ├®puis├®");
+  if (link.use_count >= link.max_uses) throw new ReviewAccessError("Lien épuisé");
 
   const secret = newSecret();
   const { data: session, error } = await supabaseAdmin
@@ -332,7 +332,7 @@ export async function openReviewSession(token: string): Promise<ReviewSession> {
     .select("id")
     .single();
 
-  if (error || !session) throw new ReviewAccessError("Session impossible ├á cr├®er");
+  if (error || !session) throw new ReviewAccessError("Session impossible à créer");
 
   await supabaseAdmin
     .from("secure_links")
@@ -372,9 +372,9 @@ export async function requireReviewSession(): Promise<ReviewSession> {
     .maybeSingle();
 
   if (!data) throw new ReviewAccessError("Session invalide");
-  if (data.revoked_at) throw new ReviewAccessError("Session r├®voqu├®e");
+  if (data.revoked_at) throw new ReviewAccessError("Session révoquée");
   if (new Date(data.expires_at).getTime() < Date.now()) {
-    throw new ReviewAccessError("Session expir├®e");
+    throw new ReviewAccessError("Session expirée");
   }
 
   const link = data.secure_links as unknown as {
@@ -384,9 +384,9 @@ export async function requireReviewSession(): Promise<ReviewSession> {
     expires_at: string | null;
   };
   if (link.scope !== "review") throw new ReviewAccessError("Session invalide");
-  if (link.revoked_at) throw new ReviewAccessError("Lien r├®voqu├®");
+  if (link.revoked_at) throw new ReviewAccessError("Lien révoqué");
   if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
-    throw new ReviewAccessError("Lien expir├®");
+    throw new ReviewAccessError("Lien expiré");
   }
 
   return {
@@ -398,9 +398,9 @@ export async function requireReviewSession(): Promise<ReviewSession> {
 }
 
 /**
- * Charge UNIQUEMENT la version publi├®e cibl├®e par le lien.
- * Le contenu est re-normalis├® c├┤t├® serveur : toute r├®f├®rence ├á une m├®trique
- * non valid├®e ou ├á une analyse interne est retir├®e avant de sortir du serveur.
+ * Charge UNIQUEMENT la version publiée ciblée par le lien.
+ * Le contenu est re-normalisé côté serveur : toute référence à une métrique
+ * non validée ou à une analyse interne est retirée avant de sortir du serveur.
  */
 export async function loadPublishedReview(session: ReviewSession): Promise<ReviewClientPayload> {
   const { data: version } = await supabaseAdmin
@@ -410,8 +410,8 @@ export async function loadPublishedReview(session: ReviewSession): Promise<Revie
     .maybeSingle();
 
   if (!version) throw new ReviewAccessError("Restitution introuvable");
-  if (version.client_id !== session.clientId) throw new ReviewAccessError("Acc├¿s refus├®");
-  if (version.status !== "published") throw new ReviewAccessError("Restitution non publi├®e");
+  if (version.client_id !== session.clientId) throw new ReviewAccessError("Accès refusé");
+  if (version.status !== "published") throw new ReviewAccessError("Restitution non publiée");
 
   const [metricsRes, analysesRes, clientRes] = await Promise.all([
     supabaseAdmin
@@ -439,7 +439,7 @@ export async function loadPublishedReview(session: ReviewSession): Promise<Revie
   });
   const charts = normalizeReviewCharts(version.charts, allowedMetricIds);
 
-  // Aucune tra├ºabilit├® interne ne sort vers le client.
+  // Aucune traçabilité interne ne sort vers le client.
   const clientSafeContent = {
     ...content,
     blocks: content.blocks.map((b) => ({ ...b, sourceMetricIds: [], analysisId: null })),
