@@ -103,8 +103,11 @@ export function OverviewPanel({
           </p>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        {/* Une seule grille de 12 colonnes à rangées égales (auto-rows-fr) : les sept KPI
+            gardent la même hauteur quel que soit le retour à la ligne d'une sous-information. */}
+        <div className="grid auto-rows-fr grid-cols-12 gap-3">
           <KpiCard
+            className="col-span-12 sm:col-span-4"
             icon={ShieldCheck}
             tone="vue-ensemble"
             label="Réponses de référence"
@@ -112,6 +115,7 @@ export function OverviewPanel({
             hint={corpus.references > 0 ? "Corpus actif" : "Aucune réponse retenue"}
           />
           <KpiCard
+            className="col-span-12 sm:col-span-4"
             icon={UserRound}
             tone="vue-ensemble"
             label="Répondant"
@@ -125,16 +129,15 @@ export function OverviewPanel({
             hint={respondent ? ATTRIBUTION_LABEL[respondent.attributionSource] : undefined}
           />
           <KpiCard
+            className="col-span-12 sm:col-span-4"
             icon={FileStack}
             tone="reponses"
             label="Documents analysables"
             value={corpus.documents}
             hint="Issus des réponses de référence"
           />
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <KpiCard
+            className="col-span-6 lg:col-span-3"
             emphasis="secondary"
             icon={FolderOpen}
             tone="missions"
@@ -143,6 +146,7 @@ export function OverviewPanel({
             hint={runningProjects > 0 ? `${runningProjects} en cours` : undefined}
           />
           <KpiCard
+            className="col-span-6 lg:col-span-3"
             emphasis="secondary"
             icon={Inbox}
             tone="missions"
@@ -151,6 +155,7 @@ export function OverviewPanel({
             hint={openCollections > 0 ? plural(openCollections, "ouverte") : undefined}
           />
           <KpiCard
+            className="col-span-6 lg:col-span-3"
             emphasis="secondary"
             icon={BarChart3}
             tone="indicateurs"
@@ -159,6 +164,7 @@ export function OverviewPanel({
             hint={`${metricsToReview} à vérifier`}
           />
           <KpiCard
+            className="col-span-6 lg:col-span-3"
             emphasis="secondary"
             icon={History}
             tone="neutre"
@@ -224,7 +230,9 @@ export function OverviewPanel({
                 {reference.qualification?.respondentLabel ?? "Répondant non identifié"}
               </p>
               <div className="flex flex-wrap gap-2">
-                <StatusBadge tone="sawaz">{qualificationLabel(reference.qualification)}</StatusBadge>
+                <StatusBadge tone="sawaz">
+                  {qualificationLabel(reference.qualification)}
+                </StatusBadge>
                 {reference.qualification?.respondentLabel ? (
                   <StatusBadge tone="slate">
                     {ATTRIBUTION_LABEL[reference.qualification.attributionSource]}

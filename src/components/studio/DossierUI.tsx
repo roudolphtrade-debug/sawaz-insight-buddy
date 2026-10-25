@@ -112,6 +112,7 @@ export function KpiCard({
   hint,
   emphasis = "primary",
   tone,
+  className,
 }: {
   icon?: LucideIcon | undefined;
   label: string;
@@ -119,6 +120,7 @@ export function KpiCard({
   hint?: string | undefined;
   emphasis?: "primary" | "secondary" | undefined;
   tone?: SectionTone | undefined;
+  className?: string | undefined;
 }) {
   return (
     <div
@@ -128,6 +130,7 @@ export function KpiCard({
         emphasis === "primary"
           ? "border-sawaz/20 bg-sawaz/[0.035]"
           : "border-border bg-surface-raised/60",
+        className,
       )}
     >
       {Icon ? (

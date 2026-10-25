@@ -1,3 +1,12 @@
+# Quality gate final (feature/lftc-studio-ux, base 3018d25)
+- [x] Test en échec identifié : `tests/browser/dossier-layout.e2e.mjs`, étape « canevas, KPI alignés » : `KPI de hauteurs 147,147,147,137,137,137,137` (attendu : une seule hauteur).
+- [x] Non préexistant : même commande sur b435f34 → 15/15 étapes ; sur 3018d25 → échec à l'étape 2. Introduit par l'ajout de la pastille d'icône dans `KpiCard` (contenu > hauteur minimale commune, rangées de hauteurs différentes).
+- [x] Cause corrigée (pas le test) : les sept KPI dans une seule grille de 12 colonnes à rangées égales (`auto-rows-fr`) ; hauteur identique à toutes les largeurs, même si une sous-information passe à la ligne.
+- [x] `bun test tests` : 160/160 sur 3018d25 comme après correction (stable : 15 exécutions, 24 sous charge parallèle, 20 sur un seul cœur saturé, aucun échec).
+- [x] Tests navigateur : brouillons 9/9, mise en page 15/15.
+- [x] `src/integrations/supabase/types.ts` : synchronisation seule de `submission_qualifications`, `submission_classification`, `submission_attribution_source`, identiques à la migration existante 20261024120000 ; aucune migration ni modification de schéma.
+- [x] TypeScript, build, working tree propre.
+
 # Enrichissement visuel par la couleur (présentation uniquement)
 - [x] Palette sémantique par section (bleu, indigo, cyan, turquoise, lavande, ardoise)
 - [x] KPI : icônes teintées par famille métier
