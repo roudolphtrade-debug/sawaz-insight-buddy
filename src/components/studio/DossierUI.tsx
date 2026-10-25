@@ -102,7 +102,8 @@ export function CardHeader({
 
 /**
  * Indicateur chiffré : libellé, valeur dominante et sous-information, tous centrés.
- * Hauteur identique pour toutes les tuiles (grille `items-stretch`).
+ * Hauteur identique pour toutes les tuiles (grille `items-stretch`). L'icône porte
+ * la teinte de sa famille métier (pastille teintée) ; la valeur reste sombre.
  */
 export function KpiCard({
   icon: Icon,
@@ -110,25 +111,31 @@ export function KpiCard({
   value,
   hint,
   emphasis = "primary",
+  tone,
 }: {
   icon?: LucideIcon | undefined;
   label: string;
   value: ReactNode;
   hint?: string | undefined;
   emphasis?: "primary" | "secondary" | undefined;
+  tone?: SectionTone | undefined;
 }) {
   return (
     <div
       data-kpi
       className={cn(
-        "flex h-full min-h-[7.5rem] flex-col items-center justify-center gap-1 rounded-lg border px-3 py-3 text-center",
+        "flex h-full min-h-[7.5rem] flex-col items-center justify-center gap-1.5 rounded-lg border px-3 py-3 text-center",
         emphasis === "primary"
           ? "border-sawaz/20 bg-sawaz/[0.035]"
           : "border-border bg-surface-raised/60",
       )}
     >
+      {Icon ? (
+        <span className={cn("section-icon size-7", toneClass(tone ?? "neutre"))}>
+          <Icon className="size-3.5" aria-hidden="true" />
+        </span>
+      ) : null}
       <p className="flex items-center justify-center gap-1.5 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase">
-        {Icon ? <Icon className="size-3.5 text-sawaz" aria-hidden="true" /> : null}
         {label}
       </p>
       <p
@@ -170,7 +177,11 @@ export function SummaryCard({
     <section
       aria-labelledby={id}
       data-summary-card
-      className={cn("surface-panel flex h-full flex-col p-4 sm:p-5", className)}
+      className={cn(
+        "surface-panel section-accent flex h-full flex-col p-4 sm:p-5",
+        toneClass(tone),
+        className,
+      )}
     >
       <CardHeader id={id} icon={icon} tone={tone} title={title} aside={aside} level={3} />
       <div className="mt-3 flex-1 text-sm text-body">{children}</div>

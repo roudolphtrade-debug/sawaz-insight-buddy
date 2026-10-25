@@ -76,7 +76,7 @@ export function PublicationPanel({ reviewId }: { reviewId: string }) {
       title="Accès client"
       aside={
         state.publishedVersionNo ? (
-          <StatusBadge tone="gold">Publiée · v{state.publishedVersionNo}</StatusBadge>
+          <StatusBadge tone="success">Publiée · v{state.publishedVersionNo}</StatusBadge>
         ) : (
           <StatusBadge tone="neutral">Non partagée</StatusBadge>
         )

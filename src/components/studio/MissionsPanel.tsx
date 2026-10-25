@@ -84,7 +84,7 @@ export function MissionsPanel({
                       ) : null}
                     </div>
                   </div>
-                  <StatusBadge tone="neutral">{projectStatusText(project.status)}</StatusBadge>
+                  <StatusBadge tone="indigo">{projectStatusText(project.status)}</StatusBadge>
                 </div>
 
                 <dl className="grid gap-px border-b border-border bg-border sm:grid-cols-3">
@@ -118,7 +118,7 @@ export function MissionsPanel({
                         >
                           <div className="flex min-w-0 items-center gap-2.5 text-sm">
                             <Inbox
-                              className="size-4 shrink-0 text-muted-foreground"
+                              className="size-4 shrink-0 text-[#0891b2]"
                               aria-hidden="true"
                             />
                             <span className="font-semibold text-foreground">
@@ -138,7 +138,7 @@ export function MissionsPanel({
                                 references > 0 ? plural(references, "référence") : null,
                               ])}
                             </span>
-                            <StatusBadge tone="sawaz">{collectionStatusText(c.status)}</StatusBadge>
+                            <StatusBadge tone="cyan">{collectionStatusText(c.status)}</StatusBadge>
                           </div>
                         </li>
                       );

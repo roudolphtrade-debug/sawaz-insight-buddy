@@ -1,3 +1,11 @@
+# Enrichissement visuel par la couleur (présentation uniquement)
+- [x] Palette sémantique par section (bleu, indigo, cyan, turquoise, lavande, ardoise)
+- [x] KPI : icônes teintées par famille métier
+- [x] Onglets : accent de la section sur l'onglet actif
+- [x] Badges : Référence bleu, Mission indigo, Collecte cyan, Attribution/Brouillon ardoise, Validé vert, Exclu gris foncé
+- [x] Filet d'accent supérieur sur les cartes de section et de synthèse
+- [x] Tests visuels étendus ; captures des 6 onglets vérifiées
+
 # P3.4-D
 
 - [x] Verify clean Git state, GitHub target feature/lftc-studio-ux and Sawaz Core connection.

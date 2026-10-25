@@ -6,7 +6,7 @@ import { SawazPilotMark } from "@/components/brand/PilotMark";
 import { CardHeader } from "@/components/studio/DossierUI";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
-import type { SectionTone } from "@/lib/studio/sections";
+import { toneClass, type SectionTone } from "@/lib/studio/sections";
 import { cn } from "@/lib/utils";
 import type { DataStatus } from "@/lib/tenant/types";
 
@@ -165,7 +165,13 @@ export function Panel({
   aside?: ReactNode;
 }) {
   return (
-    <section className={cn("surface-panel p-4 sm:p-5", className)}>
+    <section
+      className={cn(
+        "surface-panel p-4 sm:p-5",
+        tone ? cn("section-accent", toneClass(tone)) : null,
+        className,
+      )}
+    >
       {title || eyebrow ? (
         <div className="mb-4">
           <CardHeader
@@ -184,7 +190,7 @@ export function Panel({
 }
 
 const statusTone = {
-  disponible: "gold",
+  disponible: "success",
   partiel: "sawaz",
   indisponible: "neutral",
   facultatif: "neutral",

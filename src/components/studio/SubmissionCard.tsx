@@ -396,11 +396,15 @@ function QualificationForm({
 /** Badge de qualification, visuellement distinct du statut technique. */
 export function QualificationBadge({ submission }: { submission: StudioSubmission }) {
   const q = submission.qualification;
-  return (
-    <StatusBadge tone={q?.classification === "reference" ? "gold" : "neutral"}>
-      {qualificationLabel(q)}
-    </StatusBadge>
-  );
+  const tone =
+    q?.classification === "reference"
+      ? "sawaz"
+      : q?.classification === "excluded"
+        ? "excluded"
+        : q?.classification === "draft"
+          ? "slate"
+          : "neutral";
+  return <StatusBadge tone={tone}>{qualificationLabel(q)}</StatusBadge>;
 }
 
 /** Ajoute `download=<nom>` à l'URL signée sans toucher au token, puis déclenche le téléchargement. */

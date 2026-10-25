@@ -63,7 +63,17 @@ describe("composants visuels communs de Sawaz Pilot", () => {
   });
 
   test("badges : une seule famille visuelle (classe commune), tons de statut", () => {
-    for (const tone of ["gold", "sawaz", "neutral", "success", "warn"] as const) {
+    for (const tone of [
+      "gold",
+      "sawaz",
+      "neutral",
+      "success",
+      "warn",
+      "indigo",
+      "cyan",
+      "slate",
+      "excluded",
+    ] as const) {
       const html = renderToStaticMarkup(<StatusBadge tone={tone}>Référence</StatusBadge>);
       expect(html).toContain("status-badge");
       expect(html).toContain("rounded-full");
@@ -73,6 +83,40 @@ describe("composants visuels communs de Sawaz Pilot", () => {
     expect(warn).toContain("bg-warn/10");
     expect(warn).toContain("var(--color-warn)");
     expect(warn).not.toMatch(/destructive|--color-bad|text-bad|bg-bad/);
+    // « Validé » : vert de statut ; « Mission en cours » : indigo ; « Collecte ouverte » : cyan.
+    expect(renderToStaticMarkup(<StatusBadge tone="success">Validé</StatusBadge>)).toContain(
+      "var(--color-good)",
+    );
+    expect(renderToStaticMarkup(<StatusBadge tone="indigo">Mission en cours</StatusBadge>)).toContain(
+      "#5b5fc7",
+    );
+    expect(renderToStaticMarkup(<StatusBadge tone="cyan">Collecte ouverte</StatusBadge>)).toContain(
+      "#0891b2",
+    );
+    expect(renderToStaticMarkup(<StatusBadge tone="slate">Attribution Sawaz</StatusBadge>)).toContain(
+      "#64748b",
+    );
+    expect(renderToStaticMarkup(<StatusBadge tone="excluded">Exclu</StatusBadge>)).toContain(
+      "#3f4a57",
+    );
+  });
+
+  test("KPI : l'icône porte la teinte de sa famille métier", () => {
+    const html = renderToStaticMarkup(
+      <KpiCard icon={FileStack} tone="indicateurs" label="Indicateurs" value={12} />,
+    );
+    expect(html).toContain("tone-indicateurs");
+    expect(html).toContain("section-icon");
+  });
+
+  test("carte de synthèse : filet d'accent de section", () => {
+    const html = renderToStaticMarkup(
+      <SummaryCard icon={FileStack} tone="missions" title="Missions">
+        <p>Résumé</p>
+      </SummaryCard>,
+    );
+    expect(html).toContain("section-accent");
+    expect(html).toContain("tone-missions");
   });
 
   test("une icône par onglet, séparateur et pluriels sans cadratin", () => {
@@ -128,6 +172,9 @@ describe("onglet Missions", () => {
     expect(html.match(/ouverte le/g)).toHaveLength(1);
     expect(html).toContain("Dernière activité");
     expect(html).not.toContain("—");
+    // Badges métier : mission en cours en indigo, collecte ouverte en cyan.
+    expect(html).toContain("#5b5fc7");
+    expect(html).toContain("#0891b2");
   });
 
   test("libellés de collecte : heure puis identifiant court en cas d'égalité", () => {

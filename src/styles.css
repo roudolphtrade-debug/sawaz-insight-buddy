@@ -264,15 +264,15 @@
   border-radius: var(--radius-lg);
 }
 
-/* Teintes d'accent des sections du dossier : pastilles d'icône uniquement. */
+/* Teintes d'accent des sections du dossier : pastilles d'icône, filets et onglets. */
 .pilot .tone-vue-ensemble {
   --tone: #0a6fc4;
 }
 .pilot .tone-missions {
-  --tone: #4f5bd5;
+  --tone: #5b5fc7;
 }
 .pilot .tone-reponses {
-  --tone: #0a84e6;
+  --tone: #0891b2;
 }
 .pilot .tone-indicateurs {
   --tone: #0f8287;
@@ -281,7 +281,7 @@
   --tone: #7a4cc9;
 }
 .pilot .tone-restitution {
-  --tone: #24507e;
+  --tone: #475569;
 }
 .pilot .tone-neutre {
   --tone: #4b5b6c;
@@ -295,6 +295,39 @@
   color: var(--tone, var(--sawaz));
   background-color: color-mix(in srgb, var(--tone, var(--sawaz)) 10%, #ffffff);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--sawaz)) 18%, transparent);
+}
+
+/* Filet d'accent supérieur des cartes de section et de synthèse : très discret,
+   il signe la famille métier sans grand aplat coloré. */
+.pilot .section-accent {
+  position: relative;
+  overflow: hidden;
+}
+.pilot .section-accent::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--tone, var(--sawaz)) 55%, transparent),
+    color-mix(in srgb, var(--tone, var(--sawaz)) 12%, transparent)
+  );
+}
+
+/* Onglet actif : icône et soulignement dans la teinte de sa section. */
+.pilot .tab-tone {
+  --tab: var(--tone, var(--sawaz));
+}
+.pilot .tab-tone[data-active="true"] {
+  color: var(--tab);
+  border-color: color-mix(in srgb, var(--tab) 30%, transparent);
+  box-shadow:
+    inset 0 -2px 0 var(--tab),
+    var(--shadow-elevated);
+}
+.pilot .tab-tone[data-active="true"] .tab-icon {
+  color: var(--tab);
 }
 
 /* Famille unique de badges Pilot : hauteur, rayon, padding et corps identiques. */

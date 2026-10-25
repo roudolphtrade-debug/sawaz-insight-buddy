@@ -1036,6 +1036,83 @@ export type Database = {
           },
         ]
       }
+      submission_qualifications: {
+        Row: {
+          attribution_source: Database["public"]["Enums"]["submission_attribution_source"]
+          classification: Database["public"]["Enums"]["submission_classification"]
+          client_id: string
+          collection_id: string
+          created_at: string
+          id: string
+          included_in_analysis: boolean
+          qualified_at: string
+          qualified_by: string | null
+          reason: string | null
+          respondent_label: string | null
+          submission_id: string
+          updated_at: string
+        }
+        Insert: {
+          attribution_source?: Database["public"]["Enums"]["submission_attribution_source"]
+          classification: Database["public"]["Enums"]["submission_classification"]
+          client_id: string
+          collection_id: string
+          created_at?: string
+          id?: string
+          included_in_analysis?: boolean
+          qualified_at?: string
+          qualified_by?: string | null
+          reason?: string | null
+          respondent_label?: string | null
+          submission_id: string
+          updated_at?: string
+        }
+        Update: {
+          attribution_source?: Database["public"]["Enums"]["submission_attribution_source"]
+          classification?: Database["public"]["Enums"]["submission_classification"]
+          client_id?: string
+          collection_id?: string
+          created_at?: string
+          id?: string
+          included_in_analysis?: boolean
+          qualified_at?: string
+          qualified_by?: string | null
+          reason?: string | null
+          respondent_label?: string | null
+          submission_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_qualifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_qualifications_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_qualifications_qualified_by_fkey"
+            columns: ["qualified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_qualifications_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: true
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submissions: {
         Row: {
           client_id: string
@@ -1265,6 +1342,13 @@ export type Database = {
         | "published"
         | "archived"
       secure_link_scope: "collection" | "review"
+      submission_attribution_source: "technical" | "manual_sawaz" | "unknown"
+      submission_classification:
+        | "reference"
+        | "historical"
+        | "draft"
+        | "test"
+        | "excluded"
       submission_status: "working" | "submitted"
     }
     CompositeTypes: {
@@ -1416,6 +1500,14 @@ export const Constants = {
         "archived",
       ],
       secure_link_scope: ["collection", "review"],
+      submission_attribution_source: ["technical", "manual_sawaz", "unknown"],
+      submission_classification: [
+        "reference",
+        "historical",
+        "draft",
+        "test",
+        "excluded",
+      ],
       submission_status: ["working", "submitted"],
     },
   },
