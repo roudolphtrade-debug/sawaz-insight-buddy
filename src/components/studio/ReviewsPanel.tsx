@@ -44,7 +44,7 @@ function ReviewRow({
             <span className="font-semibold text-foreground">
               {primary ? "Restitution principale" : review.projectName}
             </span>
-            <StatusBadge tone={review.status === "published" ? "gold" : "sawaz"}>
+            <StatusBadge tone={review.status === "published" ? "success" : "slate"}>
               {REVIEW_STATUS_LABEL[review.status as ReviewStatus]}
             </StatusBadge>
           </p>

@@ -45,7 +45,7 @@ export function SubmissionsSection({
           description="Donnée brute déclarée par les répondants, présentée avec la qualification Sawaz."
           aside={
             qualificationsAvailable ? (
-              <StatusBadge tone="gold">{plural(active.length, "référence")}</StatusBadge>
+              <StatusBadge tone="sawaz">{plural(active.length, "référence")}</StatusBadge>
             ) : null
           }
         />
@@ -157,9 +157,9 @@ function ReferenceRow({
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2">
             <span className="font-display text-lg font-extrabold text-foreground">{name}</span>
-            <StatusBadge tone="gold">{qualificationLabel(q)}</StatusBadge>
+            <StatusBadge tone="sawaz">{qualificationLabel(q)}</StatusBadge>
             {q?.respondentLabel ? (
-              <StatusBadge tone="neutral">{ATTRIBUTION_LABEL[q.attributionSource]}</StatusBadge>
+              <StatusBadge tone="slate">{ATTRIBUTION_LABEL[q.attributionSource]}</StatusBadge>
             ) : null}
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">

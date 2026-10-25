@@ -30,10 +30,11 @@ const TYPE_HINT: Record<AnalysisType, string> = {
   note: "Réservée à Sawaz, jamais visible côté client.",
 };
 
+// Famille lavande de l'onglet Analyse : variantes d'une même famille, la note reste neutre.
 const TYPE_TONE = {
-  constat: "gold",
-  hypothese: "sawaz",
-  recommandation: "gold",
+  constat: "sawaz",
+  hypothese: "cyan",
+  recommandation: "sawaz",
   note: "neutral",
 } as const;
 

@@ -24,7 +24,7 @@ const PROVENANCE_LABEL: Record<string, string> = {
 
 const STATUS_TONE = {
   a_verifier: "warn",
-  valide: "gold",
+  valide: "success",
   rejete: "neutral",
 } as const;
 
