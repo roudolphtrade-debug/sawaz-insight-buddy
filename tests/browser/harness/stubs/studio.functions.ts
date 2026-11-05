@@ -30,6 +30,11 @@ export async function reviewStudioMetric(input: unknown) {
 }
 
 /** Lecture (non comptée comme enregistrement). */
+export async function getStudioSubmissionFileUrls(input: unknown) {
+  record("read:getStudioSubmissionFileUrls", input);
+  return { ok: false as const, error: "stub" };
+}
+
 export async function getStudioFileUrl(input: unknown) {
   record("read:getStudioFileUrl", input);
   return { ok: false as const, error: "stub" };
