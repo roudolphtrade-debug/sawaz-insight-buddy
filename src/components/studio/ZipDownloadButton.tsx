@@ -86,7 +86,7 @@ export function ZipDownloadButton({
           setError("Les documents dépassent 200 Mo au total. Téléchargez-les individuellement.");
           return;
         }
-        entries.push({ path: paths[i], data });
+        entries.push({ path: paths[i] ?? safeEntryName(f.name), data });
       }
       const zip = buildZip(entries);
       const blob = new Blob([zip as BlobPart], { type: "application/zip" });
