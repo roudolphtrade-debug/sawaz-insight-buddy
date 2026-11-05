@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { DocumentGroups } from "@/components/studio/DocumentGroups";
 import { usePanelActive } from "@/components/studio/DossierTabs";
+import { ZipDownloadButton } from "@/components/studio/ZipDownloadButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   ATTRIBUTION_LABEL,
@@ -156,7 +157,14 @@ export function SubmissionDetail({
       </div>
 
       <section aria-label="Documents transmis">
-        <h4 className="text-eyebrow text-sawaz">Documents transmis · {submission.files.length}</h4>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h4 className="text-eyebrow text-sawaz">Documents transmis · {submission.files.length}</h4>
+          <ZipDownloadButton
+            submissionId={submission.id}
+            respondent={submission.respondent ?? submission.qualification?.respondentLabel ?? null}
+            files={submission.files}
+          />
+        </div>
         {error ? (
           <p role="alert" className="mt-2 text-sm text-destructive">
             {error}

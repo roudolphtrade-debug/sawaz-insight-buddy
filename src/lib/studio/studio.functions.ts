@@ -499,6 +499,50 @@ export const getStudioFileUrl = createServerFn({ method: "POST" })
     return { ok: true, data: { url: signed.signedUrl, name: file.original_name } };
   });
 
+/** URL signées (5 min) en lot pour tous les documents d'une réponse, lus via la RLS. */
+export const getStudioSubmissionFileUrls = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { submissionId: string }) => ({
+    submissionId: String(input.submissionId ?? ""),
+  }))
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<Result<{ id: string; slot: string; name: string; size: number; url: string }[]>> => {
+      const { data: files } = await context.supabase
+        .from("files")
+        .select("id, slot_key, storage_path, original_name, size_bytes")
+        .eq("submission_id", data.submissionId)
+        .limit(101);
+      if (!files || files.length === 0)
+        return { ok: false, error: "Aucun document accessible pour cette réponse" };
+      if (files.length > 100) return { ok: false, error: "Trop de documents pour un seul ZIP" };
+
+      const { data: signed, error } = await context.supabase.storage
+        .from("collection-files")
+        .createSignedUrls(
+          files.map((f) => f.storage_path),
+          300,
+        );
+      if (error || !signed) return { ok: false, error: "Liens de téléchargement indisponibles" };
+
+      const out = [];
+      for (const [i, f] of files.entries()) {
+        const url = signed[i]?.signedUrl;
+        if (!url || signed[i]?.error) return { ok: false, error: "Liens de téléchargement indisponibles" };
+        out.push({
+          id: f.id,
+          slot: f.slot_key,
+          name: f.original_name,
+          size: Number(f.size_bytes) || 0,
+          url,
+        });
+      }
+      return { ok: true, data: out };
+    },
+  );
+
 export const saveStudioAnalysis = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
