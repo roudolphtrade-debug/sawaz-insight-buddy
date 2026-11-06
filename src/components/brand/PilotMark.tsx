@@ -1,5 +1,5 @@
-import logoOnDark from "@/assets/sawaz-logo-dark-bg.png.asset.json";
-import logoOnLight from "@/assets/sawaz-logo-light-bg.png.asset.json";
+import logoOnDark from "@/assets/sawaz-pilot-logo-on-dark.png";
+import logoOnLight from "@/assets/sawaz-pilot-logo-on-light.png";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,7 +17,7 @@ export function SawazPilotMark({
   return (
     <span className={cn("inline-flex items-center gap-3", className)}>
       <img
-        src={onDark ? logoOnDark.url : logoOnLight.url}
+        src={onDark ? logoOnDark : logoOnLight}
         alt="Sawaz"
         width={onDark ? 519 : 1706}
         height={onDark ? 280 : 914}
